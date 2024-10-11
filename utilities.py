@@ -136,7 +136,7 @@ def read_dem_initial(df_demand):
     return demand_initial
 
 
-def calculate_initial_generation(initial_demand, packages):
+def calculate_initialgeneration(initial_demand, packages):
     """
     Calculates the total initial generation of demand for each package type 
     based on the initial demand data.
