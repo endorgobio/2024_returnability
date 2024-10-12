@@ -168,7 +168,7 @@ def calculate_initialgeneration(initial_demand, packages):
 
     return initial_generation
 
-import numpy as np
+
 
 def distribute_demand(n, total_demand):
     """
@@ -193,144 +193,86 @@ def distribute_demand(n, total_demand):
     return random_numbers
 
 
-def create_instance(
-    # Basic parameters
-    n_acopios,  # Maximum 344
-    n_centros,  # Maximum 5
-    n_plantas,  # Maximum 3
-    n_productores,  # Maximum 5
-    n_envases,
-    n_periodos,
-
-    # Technical parameters
-    ccv,  # Classification capacity of valorization centers
-    acv,  # Storage capacity of valorization centers
-    lpl,  # Washing capacity of washing plants
-    apl,  # Storage capacity of washing plants
-    ta,  # Approval rate in valorization centers
-    tl,  # Approval rate in washing plants
-
-    # Cost parameters
-    arr_cv,  # Rental cost of valorization centers
-    arr_pl,  # Rental cost of washing plants
-    renta_increm,  # Annual rent increase
-    ade_cv,  # Adaptation cost of valorization centers
-    ade_pl,  # Adaptation cost of washing plants
-    adecua_increm,  # Annual adaptation cost increase
-    qc,  # Classification and inspection cost
-    qt,  # Crushing cost
-    ql,  # Washing cost
-    qb,  # Laboratory test cost
-    qa,  # Transportation cost
-    cinv,  # Inventory cost of valorization centers
-    pinv,  # Inventory cost of washing plants
-
-    # Environmental parameters
-    em,  # CO2 emissions in kilometers
-    el,  # CO2 emissions in the washing process
-    et,  # CO2 emissions in the crushing process
-    en,  # CO2 emissions in the production of new containers
-
-    # Contextual parameters
-    wa,  # WACC
-    recup_increm,  # Recovery rate increase
-    enr,  # Price of returnable container
-    tri,  # Price of crushed container
-    adem,  # Demand increase
-    recup,  # Recovery rate
-    envn,  # Price of new containers
-    dep,  # Deposit cost
-    n_pack_prod,  # Maximum number of containers used by each producer
-    dem_interval,  # Interval in which the demand lies
-
-    # Dataframe
-    df_coord,
-    df_dist,
-
-    # Optional = None
-    type_distance='distance_geo',
-    initial_demand=None,
-):
-    """
-    Creates an instance with various parameters including demand, inventory, 
-    environmental, and technical capacities for a valorization system.
+def create_instance(parameters):
+    """Creates an instance for the optimization model using provided parameters.
 
     Args:
-        n_acopios (int): Number of collection points.
-        n_centros (int): Number of valorization centers.
-        n_plantas (int): Number of washing plants.
-        n_productores (int): Number of producers.
-        n_envases (int): Number of packages.
-        n_periodos (int): Number of periods.
-
-        Technical, cost, environmental, and contextual parameters define system capacities, emissions,
-        rental costs, etc. Dataframes provide node coordinates and distances.
-
-        df_coord (DataFrame): Node coordinates.
-        df_dist (DataFrame): Distance information.
-        type_distance (str): Type of distance measure used. Default is 'distance_geo'.
-        initial_demand (dict, optional): Initial demand data.
+        parameters (dict): A dictionary containing various parameters for the instance, including:
+            - df_coord: DataFrame containing node coordinates.
+            - df_dist: DataFrame containing distances between nodes.
+            - df_demand: DataFrame containing demand data.
+            - n_acopios: Number of collection nodes.
+            - n_centros: Number of classification centers.
+            - n_plantas: Number of washing plants.
+            - n_productores: Number of producers.
+            - n_envases: Number of types of containers.
+            - n_periodos: Number of periods for the model.
+            - ccv: Classification capacity for each center.
+            - acv: Storage capacity for each center.
+            - lpl: Washing capacity for each plant.
+            - apl: Storage capacity for each plant.
+            - arr_cv: Rental cost for classification centers.
+            - renta_increm: Increment rate for rental costs.
+            - ade_cv: Adaptation cost for classification centers.
+            - ade_pl: Adaptation cost for washing plants.
+            - dep: Deposit cost for containers.
+            - enr: Price for returnable containers.
+            - tri: Price for crushed containers.
+            - adem: Demand increment rate.
+            - initial_demand: Initial demand values.
+            - recup: Initial recovery rate.
+            - recup_increm: Increment rate for recovery.
+            - n_pack_prod: Number of packs produced.
+            - dem_interval: Demand interval.
 
     Returns:
-        dict: A dictionary representing the entire instance configuration with the given parameters.
+        dict: A dictionary representing the optimization model instance with the following keys:
+            - acopios: List of selected collection nodes.
+            - centros: List of selected classification centers.
+            - plantas: List of selected washing plants.
+            - productores: List of selected producers.
+            - envases: List of container types.
+            - periodos: List of time periods.
+            - cc: Classification capacities for centers.
+            - ca: Storage capacities for centers.
+            - cl: Washing capacities for plants.
+            - cp: Storage capacities for plants.
+            - rv: Rental costs for classification centers per period.
+            - da: Distances from collection points to classification centers.
+            - dl: Distances from classification centers to washing plants.
+            - dp: Distances from washing plants to producers.
+            - rl: Rental costs for washing plants per period.
+            - av: Adaptation costs for classification centers per period.
+            - al: Adaptation costs for washing plants per period.
+            - qd: Deposit costs for containers.
+            - pv: Prices for returnable containers.
+            - pt: Prices for crushed containers.
+            - b: Demand increment rates per period.
+            - dem: Aggregate initial demand.
+            - de: Periodic demand.
+            - gi: Initial generation values.
+            - ge: Generation per period.
+            - iv: Initial inventory for classification centers.
+            - il: Initial inventory for washing plants.
+            - ci: Inventory costs for classification centers.
+            - cv: Inventory costs for washing plants.
+            - pe: Prices for new containers.
     """
-    # Create an empty dictionary
-    instance = {}
+    # Copy parameters into data for the instance
+    instance = {k: v for k, v in parameters.items()}
 
-    # Store basic parameters
-    instance['n_acopios'] = n_acopios
-    instance['n_centros'] = n_centros
-    instance['n_plantas'] = n_plantas
-    instance['n_productores'] = n_productores
-    instance['n_envases'] = n_envases
-    instance['n_periodos'] = n_periodos
+    # Read dataframes
+    df_coord = instance['df_coord']
+    df_dist = instance['df_dist']
+    df_demand = instance['df_demand']
 
-    # Store technical parameters
-    instance['ccv'] = ccv
-    instance['acv'] = acv
-    instance['lpl'] = lpl
-    instance['apl'] = apl
-    instance['ta'] = ta
-    instance['tl'] = tl
-
-    # Store cost parameters
-    instance['arr_cv'] = arr_cv
-    instance['arr_pl'] = arr_pl
-    instance['renta_increm'] = renta_increm
-    instance['ade_cv'] = ade_cv
-    instance['ade_pl'] = ade_pl
-    instance['adecua_increm'] = adecua_increm
-    instance['qc'] = qc
-    instance['qt'] = qt
-    instance['ql'] = ql
-    instance['qb'] = qb
-    instance['qa'] = qa
-    instance['cinv'] = cinv
-    instance['pinv'] = pinv
-
-    # Store environmental parameters
-    instance['em'] = em
-    instance['el'] = el
-    instance['et'] = et
-    instance['en'] = en
-
-    # Store contextual parameters
-    instance['wa'] = wa
-    instance['recup_increm'] = recup_increm
-    instance['enr'] = enr
-    instance['tri'] = tri
-    instance['adem'] = adem
-    instance['recup'] = recup
-    instance['envn'] = envn
-    instance['dep'] = dep
-
-    # Define sets for collection points, valorization centers, plants, producers, packages, and periods
-    acopios = select_nodes(df_coord, 'collection', n_acopios)
-    centros = select_nodes(df_coord, 'clasification', n_centros)
-    plantas = select_nodes(df_coord, 'washing', n_plantas)
-    productores = select_nodes(df_coord, 'producer', n_productores)
-    envases = ['E' + str(i) for i in range(n_envases)]
-    periodos = [i + 1 for i in range(n_periodos)]
+    # Define sets
+    acopios = select_nodes(df_coord, 'collection', instance['n_acopios'])
+    centros = select_nodes(df_coord, 'clasification', instance['n_centros'])
+    plantas = select_nodes(df_coord, 'washing', instance['n_plantas'])
+    productores = select_nodes(df_coord, 'producer', instance['n_productores'])
+    envases = ['E' + str(i) for i in range(instance['n_envases'])]
+    periodos = [i + 1 for i in range(instance['n_periodos'])]
 
     instance['acopios'] = acopios
     instance['centros'] = centros
@@ -339,164 +281,97 @@ def create_instance(
     instance['envases'] = envases
     instance['periodos'] = periodos
 
-    # Classification capacity of the valorization centers
-    instance['cc'] = {centro: ccv for centro in centros}
+    instance['cc'] = {centro: instance['ccv'] for centro in centros}  # Classification capacity for centers
+    instance['ca'] = {centro: instance['acv'] for centro in centros}  # Storage capacity for centers
+    instance['cl'] = {planta: instance['lpl'] for planta in plantas}  # Washing capacity for plants
+    instance['cp'] = {planta: instance['apl'] for planta in plantas}  # Storage capacity for plants
     
-    # Storage capacity of the valorization centers
-    instance['ca'] = {centro: acv for centro in centros}
-    
-    # Washing capacity of the washing plants
-    instance['cl'] = {planta: lpl for planta in plantas}
-    
-    # Storage capacity of the washing plants
-    instance['cp'] = {planta: apl for planta in plantas}
-    
-    # Rental cost of the valorization center for the first period
-    rv = {(c, 1): arr_cv for c in centros}
-    
-    # Rental cost of valorization centers for subsequent periods,
-    # applying the annual rent increase
-    for t in range(2, n_periodos + 1):
+    rv = {(c, 1): instance['arr_cv'] for c in centros}  # Rental cost for classification centers
+    for t in range(2, instance['n_periodos'] + 1):
         for c in centros:
-            rv[(c, t)] = int(rv[(c, t - 1)] * (1 + renta_increm))
-    
+            rv[(c, t)] = int(rv[(c, t - 1)] * (1 + instance['renta_increm']))
     instance['rv'] = rv
+
+    # Distance from collection points to classification centers
+    instance['da'] = {(a, c): df_dist[(df_dist['origin'] == a) & (df_dist['destination'] == c)][
+        instance['type_distance']].item() for a in acopios for c in centros}
     
-    # Distance from collection points to valorization centers
-    instance['da'] = {
-        (a, c): df_dist[
-            (df_dist['origin'] == a) & (df_dist['destination'] == c)
-        ][type_distance].item() 
-        for a in acopios for c in centros
-    }
-    
-    # Distance from valorization centers to washing plants
-    instance['dl'] = {
-        (c, l): df_dist[
-            (df_dist['origin'] == c) & (df_dist['destination'] == l)
-        ][type_distance].item() 
-        for c in centros for l in plantas
-    }
+    # Distance from classification centers to washing plants
+    instance['dl'] = {(c, l): df_dist[(df_dist['origin'] == c) & (df_dist['destination'] == l)][
+        instance['type_distance']].item() for c in centros for l in plantas}
     
     # Distance from washing plants to producers
-    instance['dp'] = {
-        (l, p): df_dist[
-            (df_dist['origin'] == l) & (df_dist['destination'] == p)
-        ][type_distance].item() 
-        for l in plantas for p in productores
-    }
-    
-    # Rental cost of the washing plant for the first period
-    rl = {(l, 1): arr_pl for l in plantas}
-    
-    # Rental cost of washing plants for subsequent periods,
-    # applying the annual rent increase
-    for t in range(2, n_periodos + 1):
+    instance['dp'] = {(l, p): df_dist[(df_dist['origin'] == l) & (df_dist['destination'] == p)][
+        instance['type_distance']].item() for l in plantas for p in productores}
+
+    rl = {(l, 1): instance['arr_pl'] for l in plantas}  # Rental cost for washing plants
+    for t in range(2, instance['n_periodos'] + 1):
         for l in plantas:
-            rl[(l, t)] = int(rl[(l, t - 1)] * (1 + renta_increm))
-    
+            rl[(l, t)] = int(rl[(l, t - 1)] * (1 + instance['renta_increm']))
     instance['rl'] = rl
-    
-    # Adaptation cost of the valorization centers for the first period
-    av = {(c, 1): ade_cv for c in centros}
-    
-    # Adaptation cost of valorization centers for subsequent periods,
-    # applying the annual adaptation cost increase
-    for t in range(2, n_periodos + 1):
+
+    av = {(c, 1): instance['ade_cv'] for c in centros}  # Adaptation cost for classification centers
+    for t in range(2, instance['n_periodos'] + 1):
         for c in centros:
-            av[(c, t)] = int(av[(c, t - 1)] * (1 + adecua_increm))
-    
+            av[(c, t)] = int(av[(c, t - 1)] * (1 + instance['adecua_increm']))
     instance['av'] = av
-    
-    # Adaptation cost of the washing plants for the first period
-    al = {(l, 1): ade_pl for l in plantas}
-    
-    # Adaptation cost of washing plants for subsequent periods,
-    # applying the annual adaptation cost increase
-    for t in range(2, n_periodos + 1):
+
+    al = {(l, 1): instance['ade_pl'] for l in plantas}  # Adaptation cost for washing plants
+    for t in range(2, instance['n_periodos'] + 1):
         for l in plantas:
-            al[(l, t)] = int(al[(l, t - 1)] * (1 + adecua_increm))
-    
+            al[(l, t)] = int(al[(l, t - 1)] * (1 + instance['adecua_increm']))
     instance['al'] = al
-    
-    # Deposit cost per container
-    instance['qd'] = {envase: dep for envase in envases}
-    
-    # Price of returnable containers
-    instance['pv'] = {envase: enr for envase in envases}
-    
-    # Price of crushed containers
-    instance['pt'] = {envase: tri for envase in envases}
-    
-    # Demand increase rate for each period
-    instance['b'] = {t: adem for t in range(1, n_periodos + 1)}
-    
-    # Generate demand data
-    de_agg, de = generate_demand(
-        productores, envases, periodos, n_pack_prod, dem_interval, adem, initial_demand
-    )
-    
-    # Initial aggregated demand
-    instance['dem'] = de_agg
-    
-    # Periodic demand
-    instance['de'] = de
-    
-    # Initial generation based on aggregated demand
-    gi = calculate_initialgeneration(de_agg, envases)
+
+    instance['qd'] = {envase: instance['dep'] for envase in envases}  # Deposit cost
+    instance['pv'] = {envase: instance['enr'] for envase in envases}  # Price for returnable containers
+    instance['pt'] = {envase: instance['tri'] for envase in envases}  # Price for crushed containers
+    instance['b'] = {t: instance['adem'] for t in range(1, instance['n_periodos'] + 1)}  # Demand increment rate
+
+    # Generate demand and initial generation
+    de_agg, de = generate_demand(productores, envases, periodos, instance['n_pack_prod'],
+                                  instance['dem_interval'], instance['adem'], instance['initial_demand'])
+    instance['dem'] = de_agg  # Initial demand
+    instance['de'] = de  # Periodic demand
+    gi = calculate_initialgeneration(de_agg, envases)  # Initial generation
     instance['gi'] = gi
-    
-    # Aggregate generation for future periods
-    ge_agg = {}
+
+    ge_agg = {}  # Aggregate generation
     for p in envases:
-        for t in range(1, n_periodos):
+        for t in range(1, instance['n_periodos']):
             suma = 0
             for k in de.keys():
-                if k[0] == p and k[2] == t:
+                if (k[0] == p and k[2] == t):
                     suma += de[k]
             ge_agg[(p, t + 1)] = suma
-    
-    # Recovery rate for the first period
-    a = {1: recup}
-    
-    # Recovery rate for subsequent periods, applying the annual increase
-    for t in range(2, n_periodos + 1):
-        a[t] = a[t - 1] * (1 + recup_increm)
-    
-    instance['a'] = a
-    
-    # Generation per period for each container and collection point
+
+    a = {1: instance['recup']}
+    for t in range(2, instance['n_periodos'] + 1):
+        a[t] = (a[t - 1] * (1 + instance['recup_increm']))
+    instance['a'] = a  # Recovery rate
+
     ge = {}
     for p in envases:
-        for t in range(1, n_periodos + 1):
+        for t in range(1, instance['n_periodos'] + 1):
             if t > 1:
-                dist = distribute_demand(n_acopios, ge_agg[(p, t)])
-                for i in range(n_acopios):
+                dist = distribute_demand(instance['n_acopios'], ge_agg[(p, t)])
+                for i in range(instance['n_acopios']):
                     ge[(p, acopios[i], t)] = dist[i] * a[t]
             else:
-                dist = distribute_demand(n_acopios, gi[p])
-                for i in range(n_acopios):
+                dist = distribute_demand(instance['n_acopios'], gi[p])
+                for i in range(instance['n_acopios']):
                     ge[(p, acopios[i], 1)] = dist[i] * a[t]
-    
-    instance['ge'] = ge
-    
-    # Initial inventory for valorization centers
-    instance['iv'] = {(e, c): 0 for e in envases for c in centros}
-    
-    # Initial inventory for washing plants
-    instance['il'] = {(e, l): 0 for e in envases for l in plantas}
-    
-    # Inventory cost for valorization centers
-    instance['ci'] = {centro: cinv for centro in centros}
-    
-    # Inventory cost for washing plants
-    instance['cv'] = {planta: pinv for planta in plantas}
-    
-    # Price of new containers
-    instance['pe'] = {envase: envn for envase in envases}
+    instance['ge'] = ge  # Generation per period
 
+    # Initial inventory and inventory costs
+    instance['iv'] = {(e, c): 0 for e in envases for c in centros}  # Initial inventory for classification centers
+    instance['il'] = {(e, l): 0 for e in envases for l in plantas}  # Initial inventory for washing plants
+    instance['ci'] = {centro: instance['cinv'] for centro in centros}  # Inventory cost for centers
+    instance['cv'] = {planta: instance['pinv'] for planta in plantas}  # Inventory cost for plants
+    instance['pe'] = {envase: instance['envn'] for envase in envases}  # Price for new containers
 
     return instance
+
+
 
 
 def distancia_geo(punto1: tuple, punto2: tuple) -> float:
