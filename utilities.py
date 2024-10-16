@@ -194,7 +194,7 @@ def distribute_demand(n, total_demand):
     return random_numbers
 
 
-def create_instance(parameters):
+def create_instance(parameters, seed=None):
     """Creates an instance for the optimization model using provided parameters.
 
     Args:
@@ -225,6 +225,7 @@ def create_instance(parameters):
             - recup_increm: Increment rate for recovery.
             - n_pack_prod: Number of packs produced.
             - dem_interval: Demand interval.
+        seed: Random seed
 
     Returns:
         dict: A dictionary representing the optimization model instance with the following keys:
@@ -259,6 +260,11 @@ def create_instance(parameters):
             - cv: Inventory costs for washing plants.
             - pe: Prices for new containers.
     """
+    
+    # set random seed
+    if seed != None:
+        np.random.seed(seed)
+    
     # Copy parameters into data for the instance
     instance = {k: v for k, v in parameters.items()}
 
