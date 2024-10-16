@@ -347,7 +347,7 @@ def create_instance(parameters):
 
     a = {1: instance['recup']}
     for t in range(2, instance['n_periodos'] + 1):
-        a[t] = (a[t - 1] * (1 + instance['recup_increm']))
+        a[t] = min(1, a[t - 1] * (1 + instance['recup_increm']))
     instance['a'] = a  # Recovery rate
 
     ge = {}
