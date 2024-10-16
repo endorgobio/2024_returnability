@@ -445,7 +445,7 @@ def get_obj_components(model):
     components = [
         '_ingreso_retornable',
         '_ingreso_triturado',
-        '_egreso_envnuevo',
+        # '_egreso_envnuevo',
         '_egreso_adecuar',
         '_egreso_uso',
         '_egreso_transporte',
@@ -459,7 +459,7 @@ def get_obj_components(model):
         '_emisiones_transporte',
         '_emisiones_lavado',
         '_emisiones_trituracion',
-        '_emisiones_envnuevo'
+        # '_emisiones_envnuevo'
     ]
 
     data_FO = {}
