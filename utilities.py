@@ -416,10 +416,10 @@ def get_vars_sol(model):
 
     # Predefined column names for each variable group
     col_names = {
-        'x': ['centro', 'periodo', 'apertura'],
-        'y': ['centro', 'periodo', 'uso'],
-        'z': ['planta', 'periodo', 'apertura'],
-        'w': ['planta', 'periodo', 'uso'],
+        'x': ['centro', 'periodo', 'uso'],
+        'y': ['centro', 'periodo', 'apertura'],
+        'z': ['planta', 'periodo', 'uso'],
+        'w': ['planta', 'periodo', 'apertura'],
         'q': ['envase', 'acopio', 'centro', 'periodo', 'cantidad'],
         'r': ['envase', 'centro', 'planta', 'periodo', 'cantidad'],
         'u': ['envase', 'planta', 'productor', 'periodo', 'cantidad'],
