@@ -79,7 +79,7 @@ def generate_demand(producers, packages, periodos, n_packings, dem_interval,
         periodos (list): List of periods for which demands will be generated.
         n_packings (int): Number of packages selected by each producer.
         dem_interval (tuple): Demand range (minimum, maximum) for random generation.
-        demand_increment (float): Rate of demand increase for subsequent periods.
+        demand_increment (float): Annual demand increment
         initial_demand (dict, optional): Dictionary of initial demands, if provided. 
             If not provided, it will be generated randomly. Default is None.
 
@@ -88,6 +88,8 @@ def generate_demand(producers, packages, periodos, n_packings, dem_interval,
             - initial_demand (dict): Dictionary of generated or provided initial demands.
             - demands (dict): Dictionary of demands by package, producer, and period.
     """
+    # define monthtly increment
+    month_increment = (1 + demand_increment)**(1/12)-1
     # Create initial demands if none are provided
     if initial_demand is None:
         initial_demand = {}
@@ -104,7 +106,7 @@ def generate_demand(producers, packages, periodos, n_packings, dem_interval,
         for dict_pack in list_packages:
             for t in periodos:
                 pack_id = list(dict_pack.keys())[0]
-                demands[(pack_id, producer, t)] = int(dict_pack[pack_id] * (1 + demand_increment) ** (t - 1))
+                demands[(pack_id, producer, t)] = int(dict_pack[pack_id] * (1 + month_increment) ** (t - 1))
 
     return initial_demand, demands
 
@@ -360,10 +362,11 @@ def create_instance(parameters, seed=None):
                 if (k[0] == p and k[2] == t):
                     suma += de[k]
             ge_agg[(p, t + 1)] = suma
-
+    
+    month_incr_recup = (1+instance['recup_increm'])**(1/12) + 1
     a = {1: instance['recup']}
     for t in range(2, instance['n_periodos'] + 1):
-        a[t] = min(1, a[t - 1] * (1 + instance['recup_increm']))
+        a[t] = min(1, a[t - 1] * (1 + month_incr_recup))
     instance['a'] = a  # Recovery rate
 
     ge = {}
