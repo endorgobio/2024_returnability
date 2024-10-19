@@ -213,16 +213,16 @@ def create_instance(parameters, seed=None):
             - lpl: Washing capacity for each plant.
             - apl: Storage capacity for each plant.
             - arr_cv: Rental cost for classification centers.
-            - renta_increm: Increment rate for rental costs.
+            - inflation: Anuual estimated inflation
             - ade_cv: Adaptation cost for classification centers.
             - ade_pl: Adaptation cost for washing plants.
             - dep: Deposit cost for containers.
             - enr: Price for returnable containers.
             - tri: Price for crushed containers.
-            - adem: Demand increment rate.
+            - adem: Annual demand increment rate.
             - initial_demand: Initial demand values.
             - recup: Initial recovery rate.
-            - recup_increm: Increment rate for recovery.
+            - recup_increm: Annual Increment rate for recovery.
             - n_pack_prod: Number of packs produced.
             - dem_interval: Demand interval.
         seed: Random seed
@@ -259,6 +259,7 @@ def create_instance(parameters, seed=None):
             - ci: Inventory costs for classification centers.
             - cv: Inventory costs for washing plants.
             - pe: Prices for new containers.
+            - inflation: Annual inflation
     """
     
     # set random seed
@@ -293,12 +294,35 @@ def create_instance(parameters, seed=None):
     instance['cl'] = {planta: instance['lpl'] for planta in plantas}  # Washing capacity for plants
     instance['cp'] = {planta: instance['apl'] for planta in plantas}  # Storage capacity for plants
     
-    rv = {(c, 1): instance['arr_cv'] for c in centros}  # Rental cost for classification centers
+
+    # Rental cost for classification centers
+    rv = {(c, 1): instance['arr_cv'] for c in centros}  
+    for t in range(2, instance['n_periodos'] + 1):
+       for c in centros:
+           rv[(c, t)] = int(instance['arr_cv'] * (1 + instance['inflation'])**((t-1)//12)) # The price changes every year
+    instance['rv'] = rv
+    
+    # Rental cost for washing plants
+    rl = {(l, 1): instance['arr_pl'] for l in plantas}  
+    for t in range(2, instance['n_periodos'] + 1):
+        for l in plantas:
+            rl[(l, t)] = int(instance['arr_pl'] * (1 + instance['inflation'])**((t-1)//12))
+    instance['rl'] = rl
+    
+    # Adaptation cost for classification centers
+    av = {(c, 1): instance['ade_cv'] for c in centros}  
     for t in range(2, instance['n_periodos'] + 1):
         for c in centros:
-            rv[(c, t)] = int(rv[(c, t - 1)] * (1 + instance['renta_increm']))
-    instance['rv'] = rv
-
+            av[(c, t)] = int(instance['ade_cv'] * (1 + instance['inflation'])**((t-1)//12))
+    instance['av'] = av
+    
+    # Adaptation cost for washing plants
+    al = {(l, 1): instance['ade_pl'] for l in plantas}  
+    for t in range(2, instance['n_periodos'] + 1):
+        for l in plantas:
+            al[(l, t)] = int(instance['ade_pl'] * (1 + instance['inflation'])**((t-1)//12))
+    instance['al'] = al
+    
     # Distance from collection points to classification centers
     instance['da'] = {(a, c): df_dist[(df_dist['origin'] == a) & (df_dist['destination'] == c)][
         instance['type_distance']].item() for a in acopios for c in centros}
@@ -311,23 +335,9 @@ def create_instance(parameters, seed=None):
     instance['dp'] = {(l, p): df_dist[(df_dist['origin'] == l) & (df_dist['destination'] == p)][
         instance['type_distance']].item() for l in plantas for p in productores}
 
-    rl = {(l, 1): instance['arr_pl'] for l in plantas}  # Rental cost for washing plants
-    for t in range(2, instance['n_periodos'] + 1):
-        for l in plantas:
-            rl[(l, t)] = int(rl[(l, t - 1)] * (1 + instance['renta_increm']))
-    instance['rl'] = rl
+ 
 
-    av = {(c, 1): instance['ade_cv'] for c in centros}  # Adaptation cost for classification centers
-    for t in range(2, instance['n_periodos'] + 1):
-        for c in centros:
-            av[(c, t)] = int(av[(c, t - 1)] * (1 + instance['adecua_increm']))
-    instance['av'] = av
 
-    al = {(l, 1): instance['ade_pl'] for l in plantas}  # Adaptation cost for washing plants
-    for t in range(2, instance['n_periodos'] + 1):
-        for l in plantas:
-            al[(l, t)] = int(al[(l, t - 1)] * (1 + instance['adecua_increm']))
-    instance['al'] = al
 
     instance['qd'] = {envase: instance['dep'] for envase in envases}  # Deposit cost
     instance['pv'] = {envase: instance['enr'] for envase in envases}  # Price for returnable containers
@@ -375,7 +385,7 @@ def create_instance(parameters, seed=None):
     instance['ci'] = {centro: instance['cinv'] for centro in centros}  # Inventory cost for centers
     instance['cv'] = {planta: instance['pinv'] for planta in plantas}  # Inventory cost for plants
     instance['pe'] = {envase: instance['envn'] for envase in envases}  # Price for new containers
-
+    
     return instance
 
 
@@ -511,3 +521,4 @@ def distancia_geo(punto1: tuple, punto2: tuple) -> float:
     else:
         return None
     
+ 
