@@ -363,7 +363,7 @@ def create_instance(parameters, seed=None):
                     suma += de[k]
             ge_agg[(p, t + 1)] = suma
     
-    month_incr_recup = (1+instance['recup_increm'])**(1/12) + 1
+    month_incr_recup = (1+instance['recup_increm'])**(1/12) - 1
     a = {1: instance['recup']}
     for t in range(2, instance['n_periodos'] + 1):
         a[t] = min(1, a[t - 1] * (1 + month_incr_recup))
@@ -524,4 +524,60 @@ def distancia_geo(punto1: tuple, punto2: tuple) -> float:
     else:
         return None
     
- 
+parameters = {
+    # Basic parameters
+    "n_acopios": 5,               # maximum 344
+    "n_centros": 5,                # maximum 5
+    "n_plantas": 3,                # maximum 3
+    "n_productores": 5,            # maximum 5
+    "n_envases": 3,
+    "n_periodos": 120,
+
+    # Technical parameters
+    "ccv": 337610,  #130*2597                  # Classification capacity of the valorization centers
+    "acv": 418117, # 161*2597                    # Storage capacity of the valorization centers
+    "lpl": 168805, # 65*2597                     # Washing capacity of the washing plants
+    "apl": 623280, #240*2597                    # Storage capacity of the washing plants
+    "ta":  0.95,                    # Approval rate in valorization centers
+    "tl":  0.90,                     # Approval rate in washing plants
+
+    # Cost parameters
+    "arr_cv": 5100000,            # Rental cost of valorization centers
+    "arr_pl": 7000000,            # Rental cost of washing plants
+    "ade_cv": 20000000,           # Adaptation cost of valorization centers
+    "ade_pl": 45000000,           # Adaptation cost of washing plants
+    "qc": 140, # 363580/2597,                  # Classification and inspection cost
+    "qt": 0.81, # 2120/2597,                    # Crushing cost
+    "ql": 210, # 545370/2597,                  # Washing cost
+    "qb": 140, # 363580/2597,                  # Laboratory test cost
+    "qa": 1, # 363580/2597,                  # Transportation cost x km
+    "cinv": 12.20, # 31678/2597,                 # Inventory cost of valorization centers
+    "pinv": 11.20, # 29167/2597,                 # Inventory cost of washing plants
+
+    # Environmental parameters
+    "em": 0.0008736,               # CO2 emissions in kilometers
+    "el": 0.002597,                # CO2 emissions in the washing process
+    "et": 0.001096,                # CO2 emissions in the crushing process
+    "en": 820.65,                 # CO2 emissions in the production of new containers
+
+    # Contextual parameters
+    "wa": 0.01,                    # WACC
+    "inflation": 0.05,          # Annual inflation
+    "recup_increm": 0.05,        # Annual recovery rate increase
+    "enr": 1039.66, # 2700000,                # Price of returnable container
+    "tri": 200, # 300000,                 # Price of crushed container
+    "adem": 0.02,                  # Annual Demand increase
+    "recup": 0.8,                 # Recovery rate
+    "envn": 1250, # 3246250,               # Price of new containers
+    "dep": 70, # 181790,                 # Deposit cost
+    "n_pack_prod": 2,              # maximum number of containers that use each producer
+    "dem_interval": [30000, 30001],     # interval in which the demand lies
+
+
+
+
+    # Optional = None
+    'type_distance' : 'distance_geo',
+    'initial_demand': None,
+}
+
