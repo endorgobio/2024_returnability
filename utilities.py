@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Nov 20 11:38:47 2024
+Created on Fri Oct 11 16:45:27 2024
 
 @author: DELL
 """
-import numpy as np
 import pandas as pd
 import re
-
+import requests
+import json
+import numpy as np
+import gurobipy as gp
 
 def select_nodes(df_coord, node_type, n):
     """
@@ -388,3 +390,194 @@ def create_instance(parameters, seed=None):
     instance['pe'] = {envase: instance['envn'] for envase in envases}  # Price for new containers
     
     return instance
+
+
+def get_vars_sol(model):
+    """
+    Extracts variable solutions from the optimization model and organizes them
+    into dataframes based on variable groups.
+
+    Args:
+        model (Model): The optimization model containing variables to extract.
+
+    Returns:
+        dict: A dictionary where each key is a variable group (e.g., 'x', 'y', 'z'),
+              and the corresponding value is a pandas DataFrame containing the
+              variable indexes and their solution values.
+              
+              The column names for the DataFrame are predefined based on the
+              variable group, such as ['centro', 'periodo', 'apertura'] for 'x'.
+    """
+    dict_df = {}
+
+    # Get all variables from the model
+    variables = model.getVars()
+
+    # Iterate over variables and extract variable names, indexes, and values
+    for var in variables:
+        var_name = var.VarName
+        # Extract the group and indexes from variable name
+        var_group = var_name[:var_name.find('[')] if var_name.find('[') != -1 else var_name
+        indexes = (var_name[var_name.find('[') + 1:var_name.find(']')]
+                   if var_name.find('[') != -1 and var_name.find(']') != -1 else None)
+
+        # Organize variables into dictionary by group
+        if var_group in dict_df:
+            dict_df[var_group].append(indexes.split(',') + [var.X])
+        else:
+            dict_df[var_group] = [indexes.split(',') + [var.X]]
+
+    # Predefined column names for each variable group
+    col_names = {
+        'x': ['centro', 'periodo', 'uso'],
+        'y': ['centro', 'periodo', 'apertura'],
+        'z': ['planta', 'periodo', 'uso'],
+        'w': ['planta', 'periodo', 'apertura'],
+        'q': ['envase', 'acopio', 'centro', 'periodo', 'cantidad'],
+        'r': ['envase', 'centro', 'planta', 'periodo', 'cantidad'],
+        'u': ['envase', 'planta', 'productor', 'periodo', 'cantidad'],
+        'ic': ['envase', 'centro', 'periodo', 'cantidad'],
+        'ip': ['envase', 'planta', 'periodo', 'cantidad'],
+        'er': ['envase', 'productor', 'periodo', 'cantidad']
+    }
+
+    # Convert the lists of variable values into DataFrames with proper columns
+    dict_df = {key: pd.DataFrame(value, columns=col_names[key]) for key, value in dict_df.items()}
+
+    return dict_df
+
+def get_obj_components(model):
+    """
+    Extracts specific components of the objective function from the optimization model
+    and calculates their values. The components represent various revenue and cost-related
+    terms, which are aggregated into a dictionary.
+
+    Args:
+        model (Model): The optimization model containing the objective function components.
+
+    Returns:
+        dict: A dictionary containing the total utility ('utilidad_total') and individual 
+              objective function components. Each component is represented by its name 
+              and the corresponding value in the objective function.
+    """
+    # List of objective function components to extract
+    components = [
+        '_ingreso_retornable',
+        '_ingreso_triturado',
+        # '_egreso_envnuevo',
+        '_egreso_adecuar',
+        '_egreso_uso',
+        '_egreso_transporte',
+        '_egreso_compra',
+        '_egreso_inspeccion',
+        '_egreso_lavado',
+        '_egreso_pruebas',
+        '_egreso_trituracion',
+        '_egreso_invcentros',
+        '_egreso_invplantas',
+        '_emisiones_transporte',
+        '_emisiones_lavado',
+        '_emisiones_trituracion',
+        # '_emisiones_envnuevo'
+    ]
+
+    data_FO = {}
+
+    # Get the total objective value (utility) from the model
+    data_FO["utilidad_total"] = model.ObjVal
+
+    # Iterate through each component and calculate its value
+    for attr in components:
+        expr = getattr(model, attr)
+        # Ensure the attribute is a linear expression
+        if isinstance(expr, gp.LinExpr):
+            value = expr.getValue()
+            data_FO[attr] = value  # Store the component's value
+        else:
+            data_FO[attr] = None  # Set to None if the component is not an expression
+
+    return data_FO
+
+
+
+def distancia_geo(punto1: tuple, punto2: tuple) -> float:
+    """
+    Calcular la distancia de conducción entre dos puntos usando la API de OSRM.
+
+    Args:
+        punto1 (tuple): Coordenadas del primer punto (latitud, longitud).
+        punto2 (tuple): Coordenadas del segundo punto (latitud, longitud).
+
+    Returns:
+        float: Distancia en kilómetros entre los dos puntos, o None si hay un error.
+    """
+    url = 'http://router.project-osrm.org/route/v1/driving/'
+    o1 = f"{punto1[1]},{punto1[0]}"  # Invertir a (longitud, latitud) para OSRM
+    o2 = f"{punto2[1]},{punto2[0]}"
+    ruta = f"{o1};{o2}"
+    
+    response = requests.get(url + ruta)
+
+    if response.status_code == 200:
+        data = json.loads(response.content)
+        return data['routes'][0]['legs'][0]['distance'] / 1000  # Convertir a km
+    else:
+        return None
+    
+parameters = {
+    # Basic parameters
+    "n_acopios": 5,               # maximum 344
+    "n_centros": 5,                # maximum 5
+    "n_plantas": 3,                # maximum 3
+    "n_productores": 5,            # maximum 5
+    "n_envases": 3,
+    "n_periodos": 120,
+
+    # Technical parameters
+    "ccv": 337610,  #130*2597                  # Classification capacity of the valorization centers
+    "acv": 418117, # 161*2597                    # Storage capacity of the valorization centers
+    "lpl": 168805, # 65*2597                     # Washing capacity of the washing plants
+    "apl": 623280, #240*2597                    # Storage capacity of the washing plants
+    "ta":  0.95,                    # Approval rate in valorization centers
+    "tl":  0.90,                     # Approval rate in washing plants
+
+    # Cost parameters
+    "arr_cv": 5100000,            # Rental cost of valorization centers
+    "arr_pl": 7000000,            # Rental cost of washing plants
+    "ade_cv": 20000000,           # Adaptation cost of valorization centers
+    "ade_pl": 45000000,           # Adaptation cost of washing plants
+    "qc": 140, # 363580/2597,                  # Classification and inspection cost
+    "qt": 0.81, # 2120/2597,                    # Crushing cost
+    "ql": 210, # 545370/2597,                  # Washing cost
+    "qb": 140, # 363580/2597,                  # Laboratory test cost
+    "qa": 1, # 363580/2597,                  # Transportation cost x km
+    "cinv": 12.20, # 31678/2597,                 # Inventory cost of valorization centers
+    "pinv": 11.20, # 29167/2597,                 # Inventory cost of washing plants
+
+    # Environmental parameters
+    "em": 0.0008736,               # CO2 emissions in kilometers
+    "el": 0.002597,                # CO2 emissions in the washing process
+    "et": 0.001096,                # CO2 emissions in the crushing process
+    "en": 820.65,                 # CO2 emissions in the production of new containers
+
+    # Contextual parameters
+    "wa": 0.01,                    # WACC
+    "inflation": 0.05,          # Annual inflation
+    "recup_increm": 0.05,        # Annual recovery rate increase
+    "enr": 1039.66, # 2700000,                # Price of returnable container
+    "tri": 200, # 300000,                 # Price of crushed container
+    "adem": 0.02,                  # Annual Demand increase
+    "recup": 0.8,                 # Recovery rate
+    "envn": 1250, # 3246250,               # Price of new containers
+    "dep": 70, # 181790,                 # Deposit cost
+    "n_pack_prod": 2,              # maximum number of containers that use each producer
+    "dem_interval": [30000, 30001],     # interval in which the demand lies
+
+
+
+
+    # Optional = None
+    'type_distance' : 'distance_geo',
+    'initial_demand': None,
+}
+
