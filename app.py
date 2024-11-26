@@ -12,7 +12,7 @@ from dash import html
 from dash import dcc
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-from utilities import create_instance
+from utilities import create_instance, parameters, get_vars_sol
 from optimiser_gurobi import create_model
 import plotly.graph_objects as go
 
@@ -47,6 +47,47 @@ values = [15, 30, 45, 10]
 barplot = go.Figure(data=[
     go.Bar(x=categories, y=values, marker_color='lightblue')
 ])
+
+
+def create_map(df):
+
+    actors = ['clasification', 'collection', 'producer', 'washing']
+    map_actors = go.Figure()
+    
+    df['type'].unique()
+    for actor in actors:
+        df_filter = df[df['type']==actor]
+    
+        # Add layer 1
+        map_actors.add_trace(go.Scattermapbox(
+            lat=df_filter['latitude'],
+            lon=df_filter['longitude'],
+            mode='markers',
+            marker=go.scattermapbox.Marker(
+                size=12,
+                opacity=0.8
+            ),
+            text=df_filter['id'],
+            textposition='top right',
+            name=actor
+        ))
+    
+    # Set map layout
+    map_actors.update_layout(
+        mapbox=dict(
+            style="open-street-map",  # Map style
+            center=dict(lat=6.261943611002649, lon=-75.58979925245441),  # Center of the map
+            zoom=4  # Zoom level
+        ), 
+        autosize=True,
+        hovermode='closest',
+        showlegend=True,
+        height=600
+    )
+    
+
+
+    return map_actors
 
 parameters = {
     # Basic parameters
@@ -188,13 +229,13 @@ controls_model = dbc.Container([
         dbc.Row([
             dbc.Label("Valor envase", width=8),
             dbc.Col(
-                dbc.Input(id="valor_envase", type="number", min=0, max=10, step=1, value=30, placeholder="Enter email"),
+                dbc.Input(id="valor_envase", type="number", min=0, max=3000, step=1, value=1000, placeholder="Enter email"),
                 width=4)
             ]),
         dbc.Row([
-            dbc.Label("Costo transporte", width=8),
+            dbc.Label("valor depósito", width=8),
             dbc.Col(
-                dbc.Input(id="costo_transp", type="number", min=0, max=10, step=1, value=30, placeholder="Enter email"),
+                dbc.Input(id="deposito", type="number", min=0, max=300, step=1, value=100, placeholder="Enter email"),
                 width=4)
             ]),
         dbc.Row([
@@ -212,7 +253,7 @@ tab1_content = dbc.Container(
                  
                  ],  md=4),
         dbc.Col(
-            dcc.Graph(id="map", figure = barplot),
+            dcc.Graph(id="map", figure = create_map(df_coord)),
             md=8
         )],
         align="center",
@@ -271,3 +312,72 @@ def render_tab_content(active_tab):
 # # need to run it in heroku
 # server = app.server
 app.run_server(debug=True)
+
+# Solve the model or apply filter
+@app.callback(Output('map', 'figure'),
+              Input('solving', 'n_clicks'),
+              State('valor_envase', 'value'),
+              State('deposito', 'value')
+              )
+def run_model_graph(click_resolver, valor_envase, deposito):
+    parameters['enr'] = valor_envase
+    parameters['dep'] = deposito
+    instance = create_instance(parameters)
+    model = create_model(instance)
+    model.setParam('MIPGap', 0.1) # Set the MIP gap tolerance to 5% (0.05)
+    model.optimize()
+    var_sol = get_vars_sol(model)
+    # list of active actos
+    active_act = []
+    # active collection 
+    df_q = var_sol['q']
+    df_q = df_q[df_q['cantidad'] > 0.01]
+    active_act.extend(list(df_q['acopio'].unique()))
+    # active collection 
+    df_y = var_sol['y']
+    df_y = df_y[df_y['apertura'] > 0.01]
+    active_act.extend(list(df_y['centro'].unique()))
+    # active washing 
+    df_w = var_sol['w']
+    df_w = df_w[df_w['apertura'] > 0.01]
+    active_act.extend(list(df_w['planta'].unique()))
+    # active producer 
+    df_u = var_sol['u']
+    df_u = df_u[df_u['cantidad'] > 0.01]
+    active_act.extend(list(df_u['productor'].unique()))
+    
+    df_sol =  df_coord[df_coord["id"].isin(active_act)]
+    df_sol.reset_index(inplace=True)
+    map_actors = create_map(df_sol)
+    
+    
+    return map_actors
+
+# instance = create_instance(parameters)
+# model = create_model(instance)
+# model.setParam('MIPGap', 0.05) # Set the MIP gap tolerance to 5% (0.05)
+# model.optimize()
+# var_sol = get_vars_sol(model)
+# # list of active actos
+# active_act = []
+# # active collection 
+# df_q = var_sol['q']
+# df_q = df_q[df_q['cantidad'] > 0.01]
+# active_act.extend(list(df_q['acopio'].unique()))
+# # active collection 
+# df_y = var_sol['y']
+# df_y = df_y[df_y['apertura'] > 0.01]
+# active_act.extend(list(df_y['centro'].unique()))
+# # active washing 
+# df_w = var_sol['w']
+# df_w = df_w[df_w['apertura'] > 0.01]
+# active_act.extend(list(df_w['planta'].unique()))
+# # active producer 
+# df_u = var_sol['u']
+# df_u = df_u[df_u['cantidad'] > 0.01]
+# active_act.extend(list(df_u['productor'].unique()))
+
+# df_sol =  df_coord[df_coord["id"].isin(active_act)]
+# df_sol.reset_index(inplace=True)
+# map_actors = create_map(df_sol)
+

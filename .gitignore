@@ -2,3 +2,4 @@
 *.ini
 .spyproject/config/backups/codestyle.ini.bak
 *.bak
+__pycache__/utilities.cpython-311.pyc
