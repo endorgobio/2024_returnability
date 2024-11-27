@@ -12,6 +12,7 @@ from dash import html
 from dash import dcc
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
+from dash.exceptions import PreventUpdate
 from utilities import create_instance, parameters, get_vars_sol
 from optimiser_gurobi import create_model
 import plotly.graph_objects as go
@@ -51,10 +52,17 @@ barplot = go.Figure(data=[
 
 def create_map(df):
 
-    actors = ['clasification', 'collection', 'producer', 'washing']
+    #actors = ['clasification', 'collection', 'producer', 'washing']
     map_actors = go.Figure()
     
-    df['type'].unique()
+    actors = list(df['type'].unique())
+    if len(actors) == 0:
+        map_actors.add_trace(go.Scattermapbox(
+            lat=[],
+            lon=[],
+            mode='markers',
+        ))
+        
     for actor in actors:
         df_filter = df[df['type']==actor]
     
@@ -83,128 +91,132 @@ def create_map(df):
         hovermode='closest',
         showlegend=True,
         height=600
-    )
-    
+    )   
 
 
     return map_actors
 
-parameters = {
-    # Basic parameters
-    "n_acopios": 10,               # maximum 344
-    "n_centros": 5,                # maximum 5
-    "n_plantas": 3,                # maximum 3
-    "n_productores": 5,            # maximum 5
-    "n_envases": 3,
-    "n_periodos": 5,
+# parameters = {
+#     # Basic parameters
+#     "n_acopios": 10,               # maximum 344
+#     "n_centros": 5,                # maximum 5
+#     "n_plantas": 3,                # maximum 3
+#     "n_productores": 5,            # maximum 5
+#     "n_envases": 3,
+#     "n_periodos": 5,
 
-    # Technical parameters
-    "ccv": 337610,  #130*2597                  # Classification capacity of the valorization centers
-    "acv": 418117, # 161*2597                    # Storage capacity of the valorization centers
-    "lpl": 168805, # 65*2597                     # Washing capacity of the washing plants
-    "apl": 623280, #240*2597                    # Storage capacity of the washing plants
-    "ta": 1, # 0.95,                    # Approval rate in valorization centers
-    "tl": 1, # 0.90,                     # Approval rate in washing plants
+#     # Technical parameters
+#     "ccv": 337610,  #130*2597                  # Classification capacity of the valorization centers
+#     "acv": 418117, # 161*2597                    # Storage capacity of the valorization centers
+#     "lpl": 168805, # 65*2597                     # Washing capacity of the washing plants
+#     "apl": 623280, #240*2597                    # Storage capacity of the washing plants
+#     "ta": 1, # 0.95,                    # Approval rate in valorization centers
+#     "tl": 1, # 0.90,                     # Approval rate in washing plants
 
-    # Cost parameters
-    "arr_cv": 5100000,            # Rental cost of valorization centers
-    "arr_pl": 7000000,            # Rental cost of washing plants
-    "renta_increm": 0.0069,        # Annual rent increase
-    "ade_cv": 20000000,           # Adaptation cost of valorization centers
-    "ade_pl": 45000000,           # Adaptation cost of washing plants
-    "adecua_increm": 0.0069,       # Annual adaptation cost increase
-    "qc": 140, # 363580/2597,                  # Classification and inspection cost
-    "qt": 0.81, # 2120/2597,                    # Crushing cost
-    "ql": 210, # 545370/2597,                  # Washing cost
-    "qb": 140, # 363580/2597,                  # Laboratory test cost
-    "qa": 140, # 363580/2597,                  # Transportation cost
-    "cinv": 12.20, # 31678/2597,                 # Inventory cost of valorization centers
-    "pinv": 11.20, # 29167/2597,                 # Inventory cost of washing plants
+#     # Cost parameters
+#     "arr_cv": 5100000,            # Rental cost of valorization centers
+#     "arr_pl": 7000000,            # Rental cost of washing plants
+#     "renta_increm": 0.0069,        # Annual rent increase
+#     "ade_cv": 20000000,           # Adaptation cost of valorization centers
+#     "ade_pl": 45000000,           # Adaptation cost of washing plants
+#     "adecua_increm": 0.0069,       # Annual adaptation cost increase
+#     "qc": 140, # 363580/2597,                  # Classification and inspection cost
+#     "qt": 0.81, # 2120/2597,                    # Crushing cost
+#     "ql": 210, # 545370/2597,                  # Washing cost
+#     "qb": 140, # 363580/2597,                  # Laboratory test cost
+#     "qa": 140, # 363580/2597,                  # Transportation cost
+#     "cinv": 12.20, # 31678/2597,                 # Inventory cost of valorization centers
+#     "pinv": 11.20, # 29167/2597,                 # Inventory cost of washing plants
 
-    # Environmental parameters
-    "em": 0.0008736,               # CO2 emissions in kilometers
-    "el": 0.002597,                # CO2 emissions in the washing process
-    "et": 0.001096,                # CO2 emissions in the crushing process
-    "en": 820.65,                 # CO2 emissions in the production of new containers
+#     # Environmental parameters
+#     "em": 0.0008736,               # CO2 emissions in kilometers
+#     "el": 0.002597,                # CO2 emissions in the washing process
+#     "et": 0.001096,                # CO2 emissions in the crushing process
+#     "en": 820.65,                 # CO2 emissions in the production of new containers
 
-    # Contextual parameters
-    "wa": 0.01,                    # WACC
-    "recup_increm": 0, # 0.0025,        # Recovery rate increase
-    "enr": 1039.66, # 2700000,                # Price of returnable container
-    "tri": 200, # 300000,                 # Price of crushed container
-    "adem": 0.01,                  # Demand increase
-    "recup": 1, # 0.89,                 # Recovery rate
-    "envn": 1250, # 3246250,               # Price of new containers
-    "dep": 70, # 181790,                 # Deposit cost
-    "n_pack_prod": 2,              # maximum number of containers that use each producer
-    "dem_interval": [1000, 2000],     # interval in which the demand lies
-    "inflation": 0.05,     # infaltion
-
-
-    # Dataframes
-    'df_coord': df_coord, # coordenadas
-    'df_dist': df_dist, # distancias
-    'df_demand': df_demand, # demandas escenario base
-
-    # Optional = None
-    'type_distance' : 'distance_geo',
-    'initial_demand': None,
-}
+#     # Contextual parameters
+#     "wa": 0.01,                    # WACC
+#     "recup_increm": 0, # 0.0025,        # Recovery rate increase
+#     "enr": 1039.66, # 2700000,                # Price of returnable container
+#     "tri": 200, # 300000,                 # Price of crushed container
+#     "adem": 0.01,                  # Demand increase
+#     "recup": 1, # 0.89,                 # Recovery rate
+#     "envn": 1250, # 3246250,               # Price of new containers
+#     "dep": 70, # 181790,                 # Deposit cost
+#     "n_pack_prod": 2,              # maximum number of containers that use each producer
+#     "dem_interval": [40000, 40001],     # interval in which the demand lies
+#     "inflation": 0.05,     # infaltion
 
 
-# Basic parameters
-parameters['n_acopios'] = 5
-parameters['n_centros'] = 5
-parameters['n_plantas'] = 3
-parameters['n_productores'] = 5
-parameters['n_envases'] = 3
-parameters['n_periodos'] = 120
+#     # Dataframes
+#     'df_coord': df_coord, # coordenadas
+#     'df_dist': df_dist, # distancias
+#     'df_demand': df_demand, # demandas escenario base
 
-# Technical parameters
-parameters['ccv'] = 337610
-parameters['acv'] = 418117
-parameters['lpl'] = 168805
-parameters['apl'] = 623280
-parameters['ta'] = 0.95
-parameters['tl'] = 0.90
-
-# Cost parameters
-parameters['arr_cv'] = 5100000
-parameters['arr_pl'] = 7000000
-parameters['ade_cv'] = 20000000
-parameters['ade_pl'] = 45000000
-parameters['qc'] = 140
-parameters['qt'] = 0.81
-parameters['ql'] = 210
-parameters['qb'] = 140
-parameters['qa'] = 0.3
-parameters['cinv'] = 12.20
-parameters['pinv'] = 11.20
-parameters['em'] = 0.0008736
-parameters['el'] = 0.002597
-parameters['et'] = 0.001096
-parameters['en'] = 820.65
-
-# Contextual parameters
-parameters['wa'] = 0.01
-parameters['inflation'] = 0.05
-parameters['recup_increm'] = 0.2
-parameters['enr'] = 1039.66
-parameters['tri'] = 200
-parameters['adem'] = 0.02
-parameters['recup'] = 0.5
-parameters['envn'] = 1250
-parameters['dep'] = 70
-parameters['n_pack_prod'] = 2
-parameters['dem_interval'] = [40000, 40001]
+#     # Optional = None
+#     'type_distance' : 'distance_geo',
+#     'initial_demand': None,
+# }
 
 
-# instance = create_instance(parameters)
-# model = create_model(instance)
-# model.setParam('OutputFlag', 0)
-# model.setParam('MIPGap', 0.05)
-# # Optimize
-# model.optimize()
+parameters['df_coord'] = df_coord
+parameters['df_dist'] = df_dist
+parameters['df_demand'] = df_demand
+
+
+# # Basic parameters
+# parameters['n_acopios'] = 5
+# parameters['n_centros'] = 5
+# parameters['n_plantas'] = 3
+# parameters['n_productores'] = 5
+# parameters['n_envases'] = 3
+# parameters['n_periodos'] = 120
+
+# # Technical parameters
+# parameters['ccv'] = 337610
+# parameters['acv'] = 418117
+# parameters['lpl'] = 168805
+# parameters['apl'] = 623280
+# parameters['ta'] = 0.95
+# parameters['tl'] = 0.90
+
+# # Cost parameters
+# parameters['arr_cv'] = 5100000
+# parameters['arr_pl'] = 7000000
+# parameters['ade_cv'] = 20000000
+# parameters['ade_pl'] = 45000000
+# parameters['qc'] = 140
+# parameters['qt'] = 0.81
+# parameters['ql'] = 210
+# parameters['qb'] = 140
+# parameters['qa'] = 0.3
+# parameters['cinv'] = 12.20
+# parameters['pinv'] = 11.20
+# parameters['em'] = 0.0008736
+# parameters['el'] = 0.002597
+# parameters['et'] = 0.001096
+# parameters['en'] = 820.65
+
+# # Contextual parameters
+# parameters['wa'] = 0.01
+# parameters['inflation'] = 0.05
+# parameters['recup_increm'] = 0.2
+# parameters['enr'] = 1039.66
+# parameters['tri'] = 200
+# parameters['adem'] = 0.02
+# parameters['recup'] = 0.5
+# parameters['envn'] = 1250
+# parameters['dep'] = 70
+# parameters['n_pack_prod'] = 2
+# parameters['dem_interval'] = [40000, 40001]
+
+
+# # instance = create_instance(parameters)
+# # model = create_model(instance)
+# # model.setParam('OutputFlag', 0)
+# # model.setParam('MIPGap', 0.05)
+# # # Optimize
+# # model.optimize()
 
 
 
@@ -246,20 +258,28 @@ controls_model = dbc.Container([
     ]
     )
 
-tab1_content = dbc.Container(
+tab1_content = dbc.Container([
     dbc.Row([
         dbc.Col([dbc.Label("Ajuste de parámetros"),
                  controls_model,
                  
                  ],  md=4),
         dbc.Col(
-            dcc.Graph(id="map", figure = create_map(df_coord)),
+            dcc.Loading(
+            dcc.Graph(id="map", figure = create_map(pd.DataFrame(columns=['type'])))),
             md=8
         )],
         align="center",
         ),
-    className="align-items-start",
-    )
+    dbc.Row(
+        id="toggle-row",
+        children=[
+            dbc.Col(html.P("This is column 1 in a row."), width=6),
+            dbc.Col(html.P("This is column 2 in a row."), width=6),
+        ],
+        style={"display": "none"}  # Initially visible
+    )],
+    className="align-items-start")
 tab2_content = html.Div("hola")
 tab3_content = html.Div("hola")
 
@@ -268,14 +288,14 @@ tab3_content = html.Div("hola")
 app.layout = dbc.Container([
     dbc.Row(html.Img(src='assets/images/header1.png', style={'width': '100%'})),
     # Loading allows the spinner showing something is runing
-    dcc.Loading(
-                # dcc.Store inside the app that stores the intermediate value
-                children=[dcc.Store(id='data_solver'),
-                          dcc.Store(id='data_solver_filtered')],
-                id="loading",
-                fullscreen=True,
-                type='circle'
-                ),
+    # dcc.Loading(
+    #             # dcc.Store inside the app that stores the intermediate value
+    #             children=[dcc.Store(id='data_solver'),
+    #                       dcc.Store(id='data_solver_filtered')],
+    #             id="loading",
+    #             fullscreen=True,
+    #             type='circle'
+    #             ),
     dbc.Tabs(
         [
             dbc.Tab(label="La historia", tab_id="historia", label_style=tab_label_style, active_label_style=activetab_label_style),
@@ -315,43 +335,49 @@ app.run_server(debug=True)
 
 # Solve the model or apply filter
 @app.callback(Output('map', 'figure'),
+              Output("toggle-row", "style"),
               Input('solving', 'n_clicks'),
               State('valor_envase', 'value'),
               State('deposito', 'value')
               )
 def run_model_graph(click_resolver, valor_envase, deposito):
-    parameters['enr'] = valor_envase
-    parameters['dep'] = deposito
-    instance = create_instance(parameters)
-    model = create_model(instance)
-    model.setParam('MIPGap', 0.1) # Set the MIP gap tolerance to 5% (0.05)
-    model.optimize()
-    var_sol = get_vars_sol(model)
-    # list of active actos
-    active_act = []
-    # active collection 
-    df_q = var_sol['q']
-    df_q = df_q[df_q['cantidad'] > 0.01]
-    active_act.extend(list(df_q['acopio'].unique()))
-    # active collection 
-    df_y = var_sol['y']
-    df_y = df_y[df_y['apertura'] > 0.01]
-    active_act.extend(list(df_y['centro'].unique()))
-    # active washing 
-    df_w = var_sol['w']
-    df_w = df_w[df_w['apertura'] > 0.01]
-    active_act.extend(list(df_w['planta'].unique()))
-    # active producer 
-    df_u = var_sol['u']
-    df_u = df_u[df_u['cantidad'] > 0.01]
-    active_act.extend(list(df_u['productor'].unique()))
     
-    df_sol =  df_coord[df_coord["id"].isin(active_act)]
-    df_sol.reset_index(inplace=True)
-    map_actors = create_map(df_sol)
-    
-    
-    return map_actors
+    if click_resolver < 1:
+        raise PreventUpdate
+        #return create_map(pd.DataFrame(columns=['type'])), {"None": "flex"}
+    else:
+        parameters['enr'] = valor_envase
+        parameters['dep'] = deposito
+        instance = create_instance(parameters)
+        model = create_model(instance)
+        model.setParam('MIPGap', 0.1) # Set the MIP gap tolerance to 5% (0.05)
+        model.optimize()
+        var_sol = get_vars_sol(model)
+        # list of active actos
+        active_act = []
+        # active collection 
+        df_q = var_sol['q']
+        df_q = df_q[df_q['cantidad'] > 0.01]
+        active_act.extend(list(df_q['acopio'].unique()))
+        # active collection 
+        df_y = var_sol['y']
+        df_y = df_y[df_y['apertura'] > 0.01]
+        active_act.extend(list(df_y['centro'].unique()))
+        # active washing 
+        df_w = var_sol['w']
+        df_w = df_w[df_w['apertura'] > 0.01]
+        active_act.extend(list(df_w['planta'].unique()))
+        # active producer 
+        df_u = var_sol['u']
+        df_u = df_u[df_u['cantidad'] > 0.01]
+        active_act.extend(list(df_u['productor'].unique()))
+        
+        df_sol =  df_coord[df_coord["id"].isin(active_act)]
+        df_sol.reset_index(inplace=True)
+        map_actors = create_map(df_sol)
+        
+        
+        return map_actors, {"display": "flex"}
 
 # instance = create_instance(parameters)
 # model = create_model(instance)
