@@ -10,6 +10,8 @@ import requests
 import json
 import numpy as np
 import gurobipy as gp
+import plotly.graph_objects as go
+
 
 def select_nodes(df_coord, node_type, n):
     """
@@ -392,113 +394,6 @@ def create_instance(parameters, seed=None):
     return instance
 
 
-def get_vars_sol(model):
-    """
-    Extracts variable solutions from the optimization model and organizes them
-    into dataframes based on variable groups.
-
-    Args:
-        model (Model): The optimization model containing variables to extract.
-
-    Returns:
-        dict: A dictionary where each key is a variable group (e.g., 'x', 'y', 'z'),
-              and the corresponding value is a pandas DataFrame containing the
-              variable indexes and their solution values.
-              
-              The column names for the DataFrame are predefined based on the
-              variable group, such as ['centro', 'periodo', 'apertura'] for 'x'.
-    """
-    dict_df = {}
-
-    # Get all variables from the model
-    variables = model.getVars()
-
-    # Iterate over variables and extract variable names, indexes, and values
-    for var in variables:
-        var_name = var.VarName
-        # Extract the group and indexes from variable name
-        var_group = var_name[:var_name.find('[')] if var_name.find('[') != -1 else var_name
-        indexes = (var_name[var_name.find('[') + 1:var_name.find(']')]
-                   if var_name.find('[') != -1 and var_name.find(']') != -1 else None)
-
-        # Organize variables into dictionary by group
-        if var_group in dict_df:
-            dict_df[var_group].append(indexes.split(',') + [var.X])
-        else:
-            dict_df[var_group] = [indexes.split(',') + [var.X]]
-
-    # Predefined column names for each variable group
-    col_names = {
-        'x': ['centro', 'periodo', 'uso'],
-        'y': ['centro', 'periodo', 'apertura'],
-        'z': ['planta', 'periodo', 'uso'],
-        'w': ['planta', 'periodo', 'apertura'],
-        'q': ['envase', 'acopio', 'centro', 'periodo', 'cantidad'],
-        'r': ['envase', 'centro', 'planta', 'periodo', 'cantidad'],
-        'u': ['envase', 'planta', 'productor', 'periodo', 'cantidad'],
-        'ic': ['envase', 'centro', 'periodo', 'cantidad'],
-        'ip': ['envase', 'planta', 'periodo', 'cantidad'],
-        'er': ['envase', 'productor', 'periodo', 'cantidad']
-    }
-
-    # Convert the lists of variable values into DataFrames with proper columns
-    dict_df = {key: pd.DataFrame(value, columns=col_names[key]) for key, value in dict_df.items()}
-
-    return dict_df
-
-def get_obj_components(model):
-    """
-    Extracts specific components of the objective function from the optimization model
-    and calculates their values. The components represent various revenue and cost-related
-    terms, which are aggregated into a dictionary.
-
-    Args:
-        model (Model): The optimization model containing the objective function components.
-
-    Returns:
-        dict: A dictionary containing the total utility ('utilidad_total') and individual 
-              objective function components. Each component is represented by its name 
-              and the corresponding value in the objective function.
-    """
-    # List of objective function components to extract
-    components = [
-        '_ingreso_retornable',
-        '_ingreso_triturado',
-        # '_egreso_envnuevo',
-        '_egreso_adecuar',
-        '_egreso_uso',
-        '_egreso_transporte',
-        '_egreso_compra',
-        '_egreso_inspeccion',
-        '_egreso_lavado',
-        '_egreso_pruebas',
-        '_egreso_trituracion',
-        '_egreso_invcentros',
-        '_egreso_invplantas',
-        '_emisiones_transporte',
-        '_emisiones_lavado',
-        '_emisiones_trituracion',
-        # '_emisiones_envnuevo'
-    ]
-
-    data_FO = {}
-
-    # Get the total objective value (utility) from the model
-    data_FO["utilidad_total"] = model.ObjVal
-
-    # Iterate through each component and calculate its value
-    for attr in components:
-        expr = getattr(model, attr)
-        # Ensure the attribute is a linear expression
-        if isinstance(expr, gp.LinExpr):
-            value = expr.getValue()
-            data_FO[attr] = value  # Store the component's value
-        else:
-            data_FO[attr] = None  # Set to None if the component is not an expression
-
-    return data_FO
-
-
 
 def distancia_geo(punto1: tuple, punto2: tuple) -> float:
     """
@@ -524,6 +419,132 @@ def distancia_geo(punto1: tuple, punto2: tuple) -> float:
     else:
         return None
     
+    
+    
+def create_df_coord(var_sol, df_coord):
+    active_act = []
+    # active collection 
+    df_q = var_sol['q']
+    df_q = df_q[df_q['cantidad'] > 0.01]
+    active_act.extend(list(df_q['acopio'].unique()))
+    # active collection 
+    df_y = var_sol['y']
+    df_y = df_y[df_y['apertura'] > 0.01]
+    active_act.extend(list(df_y['centro'].unique()))
+    # active washing 
+    df_w = var_sol['w']
+    df_w = df_w[df_w['apertura'] > 0.01]
+    active_act.extend(list(df_w['planta'].unique()))
+    # active producer 
+    df_u = var_sol['u']
+    df_u = df_u[df_u['cantidad'] > 0.01]
+    active_act.extend(list(df_u['productor'].unique()))
+        
+    df_sol =  df_coord[df_coord["id"].isin(active_act)]
+    df_sol.reset_index(inplace=True)
+    
+    return df_sol
+
+
+
+def create_df_OF(results_obj):
+    df_obj = pd.DataFrame(list(results_obj.items()), columns=["Category", "Value"])
+    # Function to determine the type based on the Category column
+    def type_OF(row):
+        if 'egreso' in row["Category"]:
+            return "egreso"
+        elif 'ingreso' in row["Category"]:
+            return "ingreso"
+        else:
+            return "other"  # Default case if neither 'egreso' nor 'ingreso' is found
+
+    # Apply the function row-wise to create a new column 'type'
+    df_obj['Type'] = df_obj.apply(type_OF, axis=1)
+
+    # Group by 'Type' and calculate the sum of 'Value' for each group
+    grouped_df = df_obj.groupby('Type')['Value'].sum().reset_index()
+
+    # Separate the total sums for 'egreso' and 'ingreso'
+    total_egreso = grouped_df[grouped_df['Type'] == 'egreso']['Value'].iloc[0]
+    total_ingreso = grouped_df[grouped_df['Type'] == 'ingreso']['Value'].iloc[0]
+
+    # Create a new column to store the divided values
+    df_obj['Percentaje'] = df_obj.apply(
+        lambda row: np.round(100*row['Value'] / total_egreso, 1) if row['Type'] == 'egreso' else 
+                   (np.round(100*row['Value'] / total_ingreso, 1) if row['Type'] == 'ingreso' else None), axis=1)
+
+    df_obj = df_obj.sort_values(by=['Type', 'Percentaje'], ascending=[False, False])
+    df_obj.reset_index()
+    return df_obj
+    
+def create_map(df):
+    """
+    Creates a scatter mapbox visualization based on the data provided in a DataFrame.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        A DataFrame containing at least the following columns:
+        - 'type': Categorical values used to group markers.
+        - 'latitude': Latitude coordinates for each marker.
+        - 'longitude': Longitude coordinates for each marker.
+        - 'id': Identifier text for each marker.
+
+    Returns:
+    --------
+    plotly.graph_objects.Figure
+        A Plotly figure object representing the scatter mapbox.
+    """
+    # Initialize the map figure
+    map_actors = go.Figure()
+
+    # Extract unique actor types from the 'type' column
+    actors = list(df['type'].unique())
+
+    # Handle case where no actors are present
+    if len(actors) == 0:
+        map_actors.add_trace(go.Scattermapbox(
+            lat=[],
+            lon=[],
+            mode='markers',
+        ))
+
+    # Loop through each actor type and add corresponding markers
+    for actor in actors:
+        df_filter = df[df['type'] == actor]
+
+        # Add markers for the current actor
+        map_actors.add_trace(go.Scattermapbox(
+            lat=df_filter['latitude'],
+            lon=df_filter['longitude'],
+            mode='markers',
+            marker=go.scattermapbox.Marker(
+                size=12,
+                opacity=0.8
+            ),
+            text=df_filter['id'],
+            textposition='top right',
+            name=actor
+        ))
+
+    # Configure the layout of the map
+    map_actors.update_layout(
+        mapbox=dict(
+            style="open-street-map",  # Use OpenStreetMap style
+            center=dict(lat=6.261943611002649, lon=-75.58979925245441),  # Center on specific coordinates
+            zoom=4  # Set default zoom level
+        ),
+        autosize=True,
+        hovermode='closest',
+        showlegend=True,
+        height=600  # Set map height in pixels
+    )
+
+    return map_actors
+
+# def create_tableOF(dictOF):
+    
+
 parameters = {
     # Basic parameters
     "n_acopios": 5,               # maximum 344

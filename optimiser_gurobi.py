@@ -392,3 +392,108 @@ def create_model(instance,
   return model
 
 
+def get_vars_sol(model):
+    """
+    Extracts variable solutions from the optimization model and organizes them
+    into dataframes based on variable groups.
+
+    Args:
+        model (Model): The optimization model containing variables to extract.
+
+    Returns:
+        dict: A dictionary where each key is a variable group (e.g., 'x', 'y', 'z'),
+              and the corresponding value is a pandas DataFrame containing the
+              variable indexes and their solution values.
+              
+              The column names for the DataFrame are predefined based on the
+              variable group, such as ['centro', 'periodo', 'apertura'] for 'x'.
+    """
+    dict_df = {}
+
+    # Get all variables from the model
+    variables = model.getVars()
+
+    # Iterate over variables and extract variable names, indexes, and values
+    for var in variables:
+        var_name = var.VarName
+        # Extract the group and indexes from variable name
+        var_group = var_name[:var_name.find('[')] if var_name.find('[') != -1 else var_name
+        indexes = (var_name[var_name.find('[') + 1:var_name.find(']')]
+                   if var_name.find('[') != -1 and var_name.find(']') != -1 else None)
+
+        # Organize variables into dictionary by group
+        if var_group in dict_df:
+            dict_df[var_group].append(indexes.split(',') + [var.X])
+        else:
+            dict_df[var_group] = [indexes.split(',') + [var.X]]
+
+    # Predefined column names for each variable group
+    col_names = {
+        'x': ['centro', 'periodo', 'uso'],
+        'y': ['centro', 'periodo', 'apertura'],
+        'z': ['planta', 'periodo', 'uso'],
+        'w': ['planta', 'periodo', 'apertura'],
+        'q': ['envase', 'acopio', 'centro', 'periodo', 'cantidad'],
+        'r': ['envase', 'centro', 'planta', 'periodo', 'cantidad'],
+        'u': ['envase', 'planta', 'productor', 'periodo', 'cantidad'],
+        'ic': ['envase', 'centro', 'periodo', 'cantidad'],
+        'ip': ['envase', 'planta', 'periodo', 'cantidad'],
+        'er': ['envase', 'productor', 'periodo', 'cantidad']
+    }
+
+    # Convert the lists of variable values into DataFrames with proper columns
+    dict_df = {key: pd.DataFrame(value, columns=col_names[key]) for key, value in dict_df.items()}
+
+    return dict_df
+
+def get_obj_components(model):
+    """
+    Extracts specific components of the objective function from the optimization model
+    and calculates their values. The components represent various revenue and cost-related
+    terms, which are aggregated into a dictionary.
+
+    Args:
+        model (Model): The optimization model containing the objective function components.
+
+    Returns:
+        dict: A dictionary containing the total utility ('utilidad_total') and individual 
+              objective function components. Each component is represented by its name 
+              and the corresponding value in the objective function.
+    """
+    # List of objective function components to extract
+    components = [
+        '_ingreso_retornable',
+        '_ingreso_triturado',
+        # '_egreso_envnuevo',
+        '_egreso_adecuar',
+        '_egreso_uso',
+        '_egreso_transporte',
+        '_egreso_compra',
+        '_egreso_inspeccion',
+        '_egreso_lavado',
+        '_egreso_pruebas',
+        '_egreso_trituracion',
+        '_egreso_invcentros',
+        '_egreso_invplantas',
+        '_emisiones_transporte',
+        '_emisiones_lavado',
+        '_emisiones_trituracion',
+        # '_emisiones_envnuevo'
+    ]
+
+    data_FO = {}
+
+    # Get the total objective value (utility) from the model
+    data_FO["utilidad_total"] = np.round(model.ObjVal, 1)
+
+    # Iterate through each component and calculate its value
+    for attr in components:
+        expr = getattr(model, attr)
+        # Ensure the attribute is a linear expression
+        if isinstance(expr, gp.LinExpr):
+            value = expr.getValue()
+            data_FO[attr] = np.round(value, 1)  # Store the component's value
+        else:
+            data_FO[attr] = None  # Set to None if the component is not an expression
+    
+    return data_FO
