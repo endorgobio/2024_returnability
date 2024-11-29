@@ -469,14 +469,14 @@ def create_df_OF(results_obj):
     total_ingreso = grouped_df[grouped_df['Type'] == 'ingreso']['Value'].iloc[0]
 
     # Create a new column to store the divided values
-    df_obj['Percentaje'] = df_obj.apply(
+    df_obj['Percentage'] = df_obj.apply(
         lambda row: np.round(100*row['Value'] / total_egreso, 1) if row['Type'] == 'egreso' else 
                    (np.round(100*row['Value'] / total_ingreso, 1) if row['Type'] == 'ingreso' else None), axis=1)
     
-    df_obj = df_obj.sort_values(by=['Type', 'Percentaje'], ascending=[False, False])
-    df_obj['%'] = df_obj['Percentaje'].astype(str) + '%'
+    df_obj = df_obj.sort_values(by=['Type', 'Percentage'], ascending=[False, False])
+    df_obj['%'] = df_obj['Percentage'].astype(str) + '%'
     df_obj['Name'] = df_obj['Category'].apply(lambda x: x.split('_')[-1] if len(x.split('_')) == 3 else x)
-    df_obj.reset_index(inplace=True)
+    df_obj = df_obj.reset_index(drop=True)
     
     return df_obj
     
@@ -545,7 +545,85 @@ def create_map(df):
 
     return map_actors
 
-# def create_tableOF(dictOF):
+def graph_costs(df):
+    # Create the bar chart
+    fig = go.Figure()
+
+    # Add horizontal bars costs
+    df['Value'] = np.round(df['Value']/1000000, 1)
+    df_filter = df[df['Type']=='egreso']
+    fig.add_trace(go.Bar(
+        x=df_filter['Value'],
+        y=df_filter['Name'],
+        orientation='h',  # Horizontal orientation
+        marker_color='#73C2FB',  # Bar color
+        opacity=0.9,  # Bar opacity
+        name='costs',
+        text=df_filter['%'],  # Dynamically formatted text
+        textposition='outside',  # Position of labels
+        showlegend=False
+    ))
+
+    fig.add_trace(go.Bar(
+        x=[0], y=[" "],
+        orientation='h',  # Horizontal orientation
+        marker_color="white",
+        name='Space',
+        showlegend=False
+    ))
+
+
+    # Add horizontal bars income
+    df_filter = df[df['Type']=='ingreso']
+    fig.add_trace(go.Bar(
+        x=df_filter['Value'],
+        y=df_filter['Name'],
+        orientation='h',  # Horizontal orientation
+        marker_color='#002D62',  # Bar color
+        opacity=0.9,  # Bar opacity
+        name='income',
+        text=df_filter['%'],  # Dynamically formatted text
+        textposition='outside',  # Position of labels
+        showlegend=False
+    ))
+
+
+
+    # Add a vertical line at 100%
+    # fig.add_shape(
+    #     type="line",
+    #     x0=100, x1=100,
+    #     y0=-0.5, y1=len(categories) + len(categories2) - 0.5,  # Extend the line across the bar chart
+    #     line=dict(color="grey", width=2),
+    #     name='Threshold'
+    # )
+
+    # Add custom legend entries
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode="markers",
+        marker=dict(size=10, color="#002D62"),
+        name="Ingresos"
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None],
+        mode="markers",
+        marker=dict(size=10, color="#73C2FB"),
+        name="Egresos"
+    ))
+
+    # Update layout for better readability
+    fig.update_layout(
+        xaxis_title="Valor (millones)",
+        yaxis_title=" ",
+        #xaxis=dict(ticksuffix="%"),  # Add % suffix to x-axis
+        template="plotly_white",
+        showlegend=True
+    )
+    
+    return fig
+    
     
 
 parameters = {
