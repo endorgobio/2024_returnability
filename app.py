@@ -100,21 +100,23 @@ tab1_content = dbc.Container([
     dbc.Row(
         id="toggle-row",
         children=[
+            dbc.Col(
+                dash_table.DataTable(
+                    id='tableOF',
+                    columns=[{"name": col, "id": col} for col in df.columns],  # Initial columns
+                    data=df.to_dict('records'),  # Initial data
+                    style_table={'overflowX': 'auto'},  # Handle horizontal scrolling if needed
+                    style_cell={
+                        'textAlign': 'left',  # Align text to the left
+                        'padding': '10px'  # Add some padding
+                    },
+                    style_header={
+                        'backgroundColor': 'lightgrey',  # Header styling
+                        'fontWeight': 'bold'
+                    },
+                ),
+            width=6),            
             dbc.Col(html.P("This is column 1 in a row."), width=6),
-            dash_table.DataTable(
-                id='tableOF',
-                columns=[{"name": col, "id": col} for col in df.columns],  # Initial columns
-                data=df.to_dict('records'),  # Initial data
-                style_table={'overflowX': 'auto'},  # Handle horizontal scrolling if needed
-                style_cell={
-                    'textAlign': 'left',  # Align text to the left
-                    'padding': '10px'  # Add some padding
-                },
-                style_header={
-                    'backgroundColor': 'lightgrey',  # Header styling
-                    'fontWeight': 'bold'
-                },
-            ),
             #dbc.Col(html.P("This is column 2 in a row."), width=6),
             # dash_table.DataTable(
             #     id='tableOF',
@@ -214,6 +216,8 @@ def run_model_graph(click_resolver, valor_envase, deposito):
         # crete df_OF
         results_obj = get_obj_components(model)
         df_obj = create_df_OF(results_obj)
+        df_obj = df_obj[['Type', 'Name', '%']]    
+        df_obj = df_obj.drop([1, 2, 3])
         #df_obj = df_obj.set_index('Category')
         updated_columns=[{"name": col, "id": col} for col in df_obj.columns]
         updated_data=df_obj.to_dict('records')  # Convert DataFrame to dictionary for DataTable
@@ -230,6 +234,9 @@ def run_model_graph(click_resolver, valor_envase, deposito):
 # var_sol = get_vars_sol(model)
 # results_obj = get_obj_components(model)
 # df_obj = create_df_OF(results_obj)
+
+
+
 # df_obj = df_obj.set_index('Category')
 # updated_columns=[{"name": col, "id": col} for col in df_obj.columns]
 # updated_data=df_obj.to_dict('records')  # Convert DataFrame to dictionary for DataTable

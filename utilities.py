@@ -472,9 +472,12 @@ def create_df_OF(results_obj):
     df_obj['Percentaje'] = df_obj.apply(
         lambda row: np.round(100*row['Value'] / total_egreso, 1) if row['Type'] == 'egreso' else 
                    (np.round(100*row['Value'] / total_ingreso, 1) if row['Type'] == 'ingreso' else None), axis=1)
-
+    
     df_obj = df_obj.sort_values(by=['Type', 'Percentaje'], ascending=[False, False])
-    df_obj.reset_index()
+    df_obj['%'] = df_obj['Percentaje'].astype(str) + '%'
+    df_obj['Name'] = df_obj['Category'].apply(lambda x: x.split('_')[-1] if len(x.split('_')) == 3 else x)
+    df_obj.reset_index(inplace=True)
+    
     return df_obj
     
 def create_map(df):
