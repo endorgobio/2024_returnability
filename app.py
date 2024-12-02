@@ -14,7 +14,7 @@ from dash import dash_table
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from utilities import create_instance, create_map, create_df_coord, create_df_OF, graph_costs, parameters
+from utilities import create_instance, create_map, create_df_coord, create_df_OF, graph_costs, create_df_util, graph_utilization, parameters
 from optimiser_gurobi import create_model, get_vars_sol, get_obj_components
 import plotly.graph_objects as go
 
@@ -58,42 +58,102 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
 # Create tabs
 # TAB 2: Results
 
-controls_model = dbc.Container([
-    dbc.Form([
-        dbc.Row([
-            dbc.Label("Valor envase", width=4),
-            dbc.Col(
-                dbc.Input(id="valor_envase", type="number", min=0, max=3000, step=1, value=1000, placeholder="Enter email"),
-                width=4)
-            ]),
-        dbc.Row([
-            dbc.Label("valor depósito", width=4),
-            dbc.Col(
-                dbc.Input(id="deposito", type="number", min=0, max=300, step=1, value=100, placeholder="Enter email"),
-                width=4)
-            ]),
-        dbc.Row([
-            dbc.Col(md=2),
-            dbc.Col(dbc.Button("Resolver", id="solving", className="mt-3", n_clicks=0), md=2)           
-            ],
-            align="right")
-        ])   
-    ]
-    )
+# controls_model = dbc.Col([
+#     # dbc.Form()   
+    
+#         dbc.Row([
+#             dbc.Col(dbc.Label("Valor envase retornable"), width=3),
+#             dbc.Col(
+#                 dbc.Input(id="valor_envase", type="number", min=0, max=3000, step=1, value=1000, placeholder="Enter email"),
+#                 width=2
+                
+#                 )
+#             ]),
+#         dbc.Row([
+#             dbc.Col(dbc.Label("valor depósito"), width=3),
+#             dbc.Col(
+#                 dbc.Input(id="deposito", type="number", min=0, max=300, step=1, value=100, placeholder="Enter email"),
+#                 width=2)
+#             ]),
+#         dbc.Row([
+#             dbc.Col(dbc.Label("Costo clasificación"), width=3),
+#             dbc.Col(
+#                 dbc.Input(id="cost_class", type="number", min=0, max=300, step=1, value=100, placeholder="Enter email"),
+#                 width=2)
+#             ]),
+#         dbc.Row([
+#             dbc.Col(dbc.Label("Costo lavado"), width=3),
+#             dbc.Col(
+#                 dbc.Input(id="cost_wash", type="number", min=0, max=300, step=1, value=100, placeholder="Enter email"),
+#                 width=2)
+#             ]),
+#         dbc.Row([
+#             dbc.Col(dbc.Label("Costo transporte"), width=3),
+#             dbc.Col(
+#                 dbc.Input(id="cost_transp", type="number", min=0, max=300, step=1, value=100, placeholder="Enter email"),
+#                 width=2)
+#             ]),
+#         dbc.Row([
+#             dbc.Col(width=3),
+#             dbc.Col(dbc.Button("Resolver", id="solving", className="mt-3", n_clicks=0), width=2)           
+#             ],
+#             align="right"
+#             )
+        
+#     ]
+#     )
 
 tab1_content = dbc.Container([
     dbc.Row([
-        dbc.Col([dbc.Label("Ajuste de parámetros"),
-                 controls_model,
-                 
-                 ],  md=4),
-        dbc.Col(md=1),
+        dbc.Col(
+            [dbc.Row(html.H4("Configuración", className="text-left")),#dbc.Label("Ajuste de parámetros"),
+                  #dbc.Row(controls_model)
+                  dbc.Row([
+                      dbc.Col(dbc.Label("Valor envase retornable"), width=8),
+                      dbc.Col(
+                          dbc.Input(id="valor_envase", type="number", min=0, max=3000, step=1, value=parameters['enr'], placeholder="Enter email"),
+                          width=3                    
+                          )
+                      ]),
+                  dbc.Row([
+                      dbc.Col(dbc.Label("valor depósito"), width=8),
+                      dbc.Col(
+                          dbc.Input(id="deposito", type="number", min=0, max=300, step=1, value=parameters['dep'], placeholder="Enter email"),
+                          width=3)
+                      ]),
+                  dbc.Row([
+                      dbc.Col(dbc.Label("Costo clasificación"), width=8),
+                      dbc.Col(
+                          dbc.Input(id="cost_class", type="number", min=0, max=300, step=1, value=parameters['qc'], placeholder="Enter email"),
+                          width=3)
+                      ]),
+                  dbc.Row([
+                      dbc.Col(dbc.Label("Costo lavado"), width=8),
+                      dbc.Col(
+                          dbc.Input(id="cost_wash", type="number", min=0, max=300, step=1, value=parameters['ql'], placeholder="Enter email"),
+                          width=3)
+                      ]),
+                  dbc.Row([
+                      dbc.Col(dbc.Label("Costo transporte"), width=8),
+                      dbc.Col(
+                          dbc.Input(id="cost_transp", type="number", min=0, max=300, step=1, value=parameters['qa'], placeholder="Enter email"),
+                          width=3)
+                      ]),
+                  dbc.Row([
+                      dbc.Col(width=8),
+                      dbc.Col(dbc.Button("Resolver", id="solving", className="mt-3", n_clicks=0), width=3)           
+                      ],
+                      align="right"
+                      )],              
+                width=5,                  
+                ),
         dbc.Col(
             dcc.Loading(
             dcc.Graph(id="map", 
                       figure = create_map(pd.DataFrame(columns=['type']))
-                      )),
-            md=7
+                      )
+            ),
+            width=7
         )],
         align="center",
         ),
@@ -101,28 +161,18 @@ tab1_content = dbc.Container([
         id="toggle-row",
         children=[
             dbc.Col([
-                html.H4("Ingresos y costos", className="text-center"),
-                dcc.Graph(id="graph_utility")],
-                # dash_table.DataTable(
-                #     id='tableOF',
-                #     columns=[{"name": col, "id": col} for col in df.columns],  # Initial columns
-                #     data=df.to_dict('records'),  # Initial data
-                #     style_table={'overflowX': 'auto'},  # Handle horizontal scrolling if needed
-                #     style_cell={
-                #         'textAlign': 'left',  # Align text to the left
-                #         'padding': '10px'  # Add some padding
-                #     },
-                #     style_header={
-                #         'backgroundColor': 'lightgrey',  # Header styling
-                #         'fontWeight': 'bold'
-                #     },
-                # ),
+                dbc.Row(html.H4("Ingresos y costos", className="text-center")),
+                dbc.Row(dcc.Graph(id="graph_utility"))],
             width=6),            
-            dbc.Col(html.P("This is column 1 in a row."), width=6),
+            dbc.Col([
+                dbc.Row(html.H4("Utilización de la capacidad", className="text-center")),
+                dbc.Row(dcc.Graph(id="graph_utilization"))], 
+                width=6),
         ],
         style={"display": "None"}  # Initially not visible
     )],
-    className="align-items-start")
+    className="align-items-start",
+    fluid=True)
 tab2_content = html.Div("hola")
 tab3_content = html.Div("hola")
 
@@ -132,15 +182,6 @@ tab3_content = html.Div("hola")
 # creates layout
 app.layout = dbc.Container([
     dbc.Row(html.Img(src='assets/images/header1.png', style={'width': '100%'})),
-    # Loading allows the spinner showing something is runing
-    # dcc.Loading(
-    #             # dcc.Store inside the app that stores the intermediate value
-    #             children=[dcc.Store(id='data_solver'),
-    #                       dcc.Store(id='data_solver_filtered')],
-    #             id="loading",
-    #             fullscreen=True,
-    #             type='circle'
-    #             ),
     dbc.Tabs(
         [
             dbc.Tab(label="La historia", tab_id="historia", label_style=tab_label_style, active_label_style=activetab_label_style),
@@ -150,7 +191,7 @@ app.layout = dbc.Container([
         id="tabs",
         active_tab="historia",
         ),
-    dbc.Row(id="tab-content", className="p-4"),],
+    dbc.Container(id="tab-content")],
     fluid=True
     )
 
@@ -182,22 +223,32 @@ app.run_server(debug=True)
 @app.callback(Output('map', 'figure'),
               Output("toggle-row", "style"),
               Output('graph_utility', 'figure'),
-              # Output("tableOF", "columns"),
-              # Output("tableOF", "data"),
+              Output('graph_utilization', 'figure'),
               Input('solving', 'n_clicks'),
               State('valor_envase', 'value'),
-              State('deposito', 'value')
+              State('deposito', 'value'),
+              State('cost_class', 'value'),
+              State('cost_wash', 'value'),
+              State('cost_transp', 'value')
               )
-def run_model_graph(click_resolver, valor_envase, deposito):
+def run_model_graph(click_resolver, 
+                    container_value, 
+                    deposit, 
+                    cost_class,
+                    cost_wash,
+                    cost_transp):
     
     if click_resolver > 0:
         # update parameter values
-        parameters['enr'] = valor_envase
-        parameters['dep'] = deposito
+        parameters['enr'] = container_value
+        parameters['dep'] = deposit
+        parameters['qc'] = cost_class
+        parameters['ql'] = cost_wash
+        parameters['qa'] = cost_transp
         # create and solve model
         instance = create_instance(parameters)
         model = create_model(instance)
-        model.setParam('MIPGap', 0.05) # Set the MIP gap tolerance to 5% (0.05)
+        model.setParam('MIPGap', 0.1) # Set the MIP gap tolerance to 5% (0.05)
         model.optimize()
         # get solution
         var_sol = get_vars_sol(model)
@@ -209,16 +260,17 @@ def run_model_graph(click_resolver, valor_envase, deposito):
         # create utility graph
         graph_utility = graph_costs(df_obj)   
         
-        
+        df_utiliz = create_df_util(var_sol, parameters)
+        graph_utiliz= graph_utilization(df_utiliz)
         
         df_obj = df_obj[['Type', 'Name', '%']]    
         df_obj = df_obj.drop([1, 2, 3])
         #df_obj = df_obj.set_index('Category')
-        updated_columns=[{"name": col, "id": col} for col in df_obj.columns]
-        updated_data=df_obj.to_dict('records')  # Convert DataFrame to dictionary for DataTable
+        # updated_columns=[{"name": col, "id": col} for col in df_obj.columns]
+        # updated_data=df_obj.to_dict('records')  # Convert DataFrame to dictionary for DataTable
             
         
-        return map_actors, {"display": "flex"}, graph_utility #updated_columns, updated_data
+        return map_actors, {"display": "flex"}, graph_utility, graph_utiliz #updated_columns, updated_data
     else:
         raise PreventUpdate
 
@@ -234,14 +286,49 @@ def run_model_graph(click_resolver, valor_envase, deposito):
 # from dash import dcc, html
 # import plotly.graph_objects as go
 
-# # Sample data
-# categories = ['A', 'B', 'C', 'D']
-# categories2 = ['E', 'F']
-# percentages = [45, 80, 90, 65]  # Example percentages
-# percentages2 = [45, 80]
+# # Use of the classification inventory capacity
+# df_util = var_sol['ic'].groupby(['periodo']).agg(inv_class=("cantidad", "sum")).reset_index()
+# df_util['inv_class'] = np.round(100*df_util['inv_class'] / (var_sol['y']['apertura'].sum()*parameters['acv']), 1)
+# # Use of the washing inventory capacity
+# df_temp = var_sol['ip'].groupby(['periodo']).agg(inv_wash=("cantidad", "sum")).reset_index()
+# df_temp['inv_wash'] = np.round(100*df_temp['inv_wash'] / (var_sol['w']['apertura'].sum()*parameters['apl']), 1)
+# df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
+# # Use of the classification processing capacity
+# df_temp = var_sol['r'].groupby(['periodo']).agg(cap_class=("cantidad", "sum")).reset_index()
+# df_temp['cap_class'] = np.round(100*df_temp['cap_class'] / (var_sol['y']['apertura'].sum()*parameters['ccv']), 1)
+# df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
+# # Use of the classification processing capacity
+# df_temp = var_sol['u'].groupby(['periodo']).agg(cap_wash=("cantidad", "sum")).reset_index()
+# df_temp['cap_wash'] = np.round(100*df_temp['cap_wash'] / (var_sol['w']['apertura'].sum()*parameters['lpl']), 1)
+# df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
+# df_util["periodo"] = df_util["periodo"].astype(int)
+# df_util = df_util.sort_values(by="periodo", ascending=True).reset_index(drop=True)
 
+# df_util = create_df_util(var_sol, parameters)
+# fig = graph_util(df_util)
     
-# fig = graph_costs(df_obj)   
+# import plotly.graph_objects as go
+
+# # Create the figure
+# fig = go.Figure()
+
+# # Add lines for each column
+# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["inv_class"], mode='lines', name='inv. clasificación'))
+# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["inv_wash"], mode='lines', name='inv. lavado'))
+# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["cap_class"], mode='lines', name='prod. clasificación'))
+# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["cap_wash"], mode='lines', name='prod. lavado'))
+
+# # Update layout
+# fig.update_layout(
+#     title=" ",
+#     xaxis_title="periodo",
+#     yaxis_title="% de uso",
+#     legend_title=" ",
+#     template="plotly_white",
+# )
+
+# # Show the figure
+# fig.show()
 
 
 # # Dash app
@@ -253,4 +340,68 @@ def run_model_graph(click_resolver, valor_envase, deposito):
 # ])
 
 # if __name__ == '__main__':
+#     app.run_server(debug=True)
+
+
+# import dash
+# from dash import html
+# import dash_bootstrap_components as dbc
+
+# # Initialize the Dash app with Bootstrap theme
+# app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+# # Define the layout
+# app.layout = dbc.Container(
+#     [
+#         # Main Row
+#         dbc.Row(
+#             [
+#                 # First Column (width 5)
+#                 dbc.Col(
+#                     [
+#                         # Row 1 (divided into two columns with width 3 and 2 respectively)
+#                         dbc.Row(
+#                             [
+#                                 dbc.Col(html.Div("Col 1, Row 1, Sub-Col 1", className="border p-2"), width=8),
+#                                 dbc.Col(html.Div("Col 1, Row 1, Sub-Col 2", className="border p-2"), width=4),
+#                             ],
+#                             className="mb-2",  # Margin between rows
+#                         ),
+#                         # Row 2
+#                         dbc.Row(
+#                             dbc.Col(html.Div("Col 1, Row 2", className="border p-2")),
+#                             className="mb-2",
+#                         ),
+#                         # Row 3
+#                         dbc.Row(
+#                             dbc.Col(html.Div("Col 1, Row 3", className="border p-2")),
+#                         ),
+#                     ],
+#                     width=5,  # Width of 5 for the first column
+#                 ),
+#                 # Second Column (width 7)
+#                 dbc.Col(
+#                     [
+#                         # Row 1 (divided into two columns)
+#                         dbc.Row(
+#                             [
+#                                 dbc.Col(html.Div("Col 2, Row 1, Sub-Col 1", className="border p-2")),
+#                                 dbc.Col(html.Div("Col 2, Row 1, Sub-Col 2", className="border p-2")),
+#                             ],
+#                             className="mb-2",
+#                         ),
+#                         # Row 2
+#                         dbc.Row(
+#                             dbc.Col(html.Div("Col 2, Row 2", className="border p-2")),
+#                         ),
+#                     ],
+#                     width=7,  # Width of 7 for the second column
+#                 ),
+#             ]
+#         )
+#     ],
+#     fluid=True,  # Full-width container
+# )
+
+# if __name__ == "__main__":
 #     app.run_server(debug=True)

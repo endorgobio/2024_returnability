@@ -479,6 +479,28 @@ def create_df_OF(results_obj):
     df_obj = df_obj.reset_index(drop=True)
     
     return df_obj
+
+
+def create_df_util(var_sol, parameters):
+    # Use of the classification inventory capacity
+    df_util = var_sol['ic'].groupby(['periodo']).agg(inv_class=("cantidad", "sum")).reset_index()
+    df_util['inv_class'] = np.round(100*df_util['inv_class'] / (var_sol['y']['apertura'].sum()*parameters['acv']), 1)
+    # Use of the washing inventory capacity
+    df_temp = var_sol['ip'].groupby(['periodo']).agg(inv_wash=("cantidad", "sum")).reset_index()
+    df_temp['inv_wash'] = np.round(100*df_temp['inv_wash'] / (var_sol['w']['apertura'].sum()*parameters['apl']), 1)
+    df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
+    # Use of the classification processing capacity
+    df_temp = var_sol['r'].groupby(['periodo']).agg(cap_class=("cantidad", "sum")).reset_index()
+    df_temp['cap_class'] = np.round(100*df_temp['cap_class'] / (var_sol['y']['apertura'].sum()*parameters['ccv']), 1)
+    df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
+    # Use of the classification processing capacity
+    df_temp = var_sol['u'].groupby(['periodo']).agg(cap_wash=("cantidad", "sum")).reset_index()
+    df_temp['cap_wash'] = np.round(100*df_temp['cap_wash'] / (var_sol['w']['apertura'].sum()*parameters['lpl']), 1)
+    df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
+    df_util["periodo"] = df_util["periodo"].astype(int)
+    df_util = df_util.sort_values(by="periodo", ascending=True).reset_index(drop=True)
+    
+    return df_util
     
 def create_map(df):
     """
@@ -540,7 +562,8 @@ def create_map(df):
         autosize=True,
         hovermode='closest',
         showlegend=True,
-        height=600  # Set map height in pixels
+        height=600,  # Set map height in pixels
+        width=800
     )
 
     return map_actors
@@ -624,7 +647,25 @@ def graph_costs(df):
     
     return fig
     
-    
+def graph_utilization(df):
+     # Create the figure
+     fig = go.Figure()
+
+     # Add lines for each column
+     fig.add_trace(go.Scatter(x=df["periodo"], y=df["inv_class"], mode='lines', name='inv. clasificación'))
+     fig.add_trace(go.Scatter(x=df["periodo"], y=df["inv_wash"], mode='lines', name='inv. lavado'))
+     fig.add_trace(go.Scatter(x=df["periodo"], y=df["cap_class"], mode='lines', name='prod. clasificación'))
+     fig.add_trace(go.Scatter(x=df["periodo"], y=df["cap_wash"], mode='lines', name='prod. lavado'))
+
+     # Update layout
+     fig.update_layout(
+         title=" ",
+         xaxis_title="periodo",
+         yaxis_title="% de uso",
+         legend_title=" ",
+         template="plotly_white",
+     )
+     return fig 
 
 parameters = {
     # Basic parameters
@@ -666,7 +707,7 @@ parameters = {
     "wa": 0.01,                    # WACC
     "inflation": 0.05,          # Annual inflation
     "recup_increm": 0.05,        # Annual recovery rate increase
-    "enr": 1039.66, # 2700000,                # Price of returnable container
+    "enr": 1040, # 2700000,                # Price of returnable container
     "tri": 200, # 300000,                 # Price of crushed container
     "adem": 0.02,                  # Annual Demand increase
     "recup": 0.8,                 # Recovery rate
