@@ -104,49 +104,65 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
 #     )
 
 tab1_content = dbc.Container([
+       
+    
     dbc.Row([
         dbc.Col(
-            [dbc.Row(html.H4("Configuración", className="text-left")),#dbc.Label("Ajuste de parámetros"),
+            [dbc.Row(html.H4("Cargar archivos",  className="text-left"), className="mt-3 mb-3"),
+            dbc.Row([dbc.Col(dbc.Label("Lista actores"), width=8),
+                     dbc.Col(dcc.Upload(
+                             id="upload-actors",
+                             children=dbc.Button("Cargar"),
+                             accept=".xlsx"), 
+                         width=3)],
+                    className="mt-1 mb-1"), 
+            dbc.Row([dbc.Col(dbc.Label("Distancias"), width=8),
+                     dbc.Col(dcc.Upload(
+                             id="upload-distances",
+                             children=dbc.Button("Cargar"),
+                             accept=".xlsx"), 
+                         width=3)],
+                    className="mt-1 mb-1"), 
+            dbc.Row(html.H4("Configuración", className="text-left"), className="mt-3 mb-3"),#dbc.Label("Ajuste de parámetros"),
                   #dbc.Row(controls_model)
-                  dbc.Row([
+            dbc.Row([
                       dbc.Col(dbc.Label("Valor envase retornable"), width=8),
                       dbc.Col(
                           dbc.Input(id="valor_envase", type="number", min=0, max=3000, step=1, value=parameters['enr'], placeholder="Enter email"),
                           width=3                    
                           )
                       ]),
-                  dbc.Row([
+            dbc.Row([
                       dbc.Col(dbc.Label("valor depósito"), width=8),
                       dbc.Col(
                           dbc.Input(id="deposito", type="number", min=0, max=300, step=1, value=parameters['dep'], placeholder="Enter email"),
                           width=3)
                       ]),
-                  dbc.Row([
+            dbc.Row([
                       dbc.Col(dbc.Label("Costo clasificación"), width=8),
                       dbc.Col(
                           dbc.Input(id="cost_class", type="number", min=0, max=300, step=1, value=parameters['qc'], placeholder="Enter email"),
                           width=3)
                       ]),
-                  dbc.Row([
+            dbc.Row([
                       dbc.Col(dbc.Label("Costo lavado"), width=8),
                       dbc.Col(
                           dbc.Input(id="cost_wash", type="number", min=0, max=300, step=1, value=parameters['ql'], placeholder="Enter email"),
                           width=3)
                       ]),
-                  dbc.Row([
+            dbc.Row([
                       dbc.Col(dbc.Label("Costo transporte"), width=8),
                       dbc.Col(
                           dbc.Input(id="cost_transp", type="number", min=0, max=300, step=1, value=parameters['qa'], placeholder="Enter email"),
                           width=3)
                       ]),
-                  dbc.Row([
+            dbc.Row([
                       dbc.Col(width=8),
                       dbc.Col(dbc.Button("Resolver", id="solving", className="mt-3", n_clicks=0), width=3)           
                       ],
                       align="right"
                       )],              
-                width=5,                  
-                ),
+            width=5),
         dbc.Col(
             dcc.Loading(
             dcc.Graph(id="map", 
@@ -155,7 +171,7 @@ tab1_content = dbc.Container([
             ),
             width=7
         )],
-        align="center",
+        # align="center",
         ),
     dbc.Row(
         id="toggle-row",
@@ -174,7 +190,7 @@ tab1_content = dbc.Container([
     className="align-items-start",
     fluid=True)
 tab2_content = html.Div("hola")
-tab3_content = html.Div("hola")
+
 
 
 
@@ -184,12 +200,11 @@ app.layout = dbc.Container([
     dbc.Row(html.Img(src='assets/images/header1.png', style={'width': '100%'})),
     dbc.Tabs(
         [
-            dbc.Tab(label="La historia", tab_id="historia", label_style=tab_label_style, active_label_style=activetab_label_style),
-            dbc.Tab(label="Instrucciones", tab_id="solucion", label_style=tab_label_style, active_label_style=activetab_label_style),
-            dbc.Tab(label="Resultados", tab_id="detalles", label_style=tab_label_style, active_label_style=activetab_label_style),
+            dbc.Tab(label="Tablero", tab_id="dashboard", label_style=tab_label_style, active_label_style=activetab_label_style),
+            dbc.Tab(label="Instrucciones", tab_id="instructions", label_style=tab_label_style, active_label_style=activetab_label_style),
         ],
         id="tabs",
-        active_tab="historia",
+        active_tab="dashboard",
         ),
     dbc.Container(id="tab-content")],
     fluid=True
@@ -206,12 +221,10 @@ def render_tab_content(active_tab):
     stored graphs, and renders the tab content depending on what the value of
     'active_tab' is.
     """
-    if active_tab == "historia":
+    if active_tab == "dashboard":
         return tab1_content
-    elif active_tab == "solucion":
+    elif active_tab == "instructions":
         return tab2_content
-    elif active_tab == "detalles":
-        return tab3_content
 
 
     
@@ -248,7 +261,7 @@ def run_model_graph(click_resolver,
         # create and solve model
         instance = create_instance(parameters)
         model = create_model(instance)
-        model.setParam('MIPGap', 0.1) # Set the MIP gap tolerance to 5% (0.05)
+        model.setParam('MIPGap', 0.05) # Set the MIP gap tolerance to 5% (0.05)
         model.optimize()
         # get solution
         var_sol = get_vars_sol(model)
@@ -342,66 +355,91 @@ def run_model_graph(click_resolver,
 # if __name__ == '__main__':
 #     app.run_server(debug=True)
 
-
 # import dash
-# from dash import html
+# from dash import dcc, html
 # import dash_bootstrap_components as dbc
+# import pandas as pd
+# from dash.dependencies import Input, Output
+# import io
+# import base64
 
-# # Initialize the Dash app with Bootstrap theme
+# # Initialize the Dash app
 # app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
-# # Define the layout
+# # Layout of the dashboard
 # app.layout = dbc.Container(
 #     [
-#         # Main Row
-#         dbc.Row(
-#             [
-#                 # First Column (width 5)
-#                 dbc.Col(
-#                     [
-#                         # Row 1 (divided into two columns with width 3 and 2 respectively)
-#                         dbc.Row(
-#                             [
-#                                 dbc.Col(html.Div("Col 1, Row 1, Sub-Col 1", className="border p-2"), width=8),
-#                                 dbc.Col(html.Div("Col 1, Row 1, Sub-Col 2", className="border p-2"), width=4),
-#                             ],
-#                             className="mb-2",  # Margin between rows
-#                         ),
-#                         # Row 2
-#                         dbc.Row(
-#                             dbc.Col(html.Div("Col 1, Row 2", className="border p-2")),
-#                             className="mb-2",
-#                         ),
-#                         # Row 3
-#                         dbc.Row(
-#                             dbc.Col(html.Div("Col 1, Row 3", className="border p-2")),
-#                         ),
-#                     ],
-#                     width=5,  # Width of 5 for the first column
-#                 ),
-#                 # Second Column (width 7)
-#                 dbc.Col(
-#                     [
-#                         # Row 1 (divided into two columns)
-#                         dbc.Row(
-#                             [
-#                                 dbc.Col(html.Div("Col 2, Row 1, Sub-Col 1", className="border p-2")),
-#                                 dbc.Col(html.Div("Col 2, Row 1, Sub-Col 2", className="border p-2")),
-#                             ],
-#                             className="mb-2",
-#                         ),
-#                         # Row 2
-#                         dbc.Row(
-#                             dbc.Col(html.Div("Col 2, Row 2", className="border p-2")),
-#                         ),
-#                     ],
-#                     width=7,  # Width of 7 for the second column
-#                 ),
-#             ]
-#         )
+#         html.H1("Upload Excel File to Dash"),
+        
+#         # Upload component
+#         dcc.Upload(
+#             id="upload-data",
+#             children=html.Button("Upload Excel File"),
+#             accept=".xlsx",
+#         ),
+        
+#         # Displaying the uploaded data
+#         html.Div(id="output-data-upload"),
+
+#         # Plot the data (example)
+#         dcc.Graph(id="graph"),
 #     ],
-#     fluid=True,  # Full-width container
+#     fluid=True,
 # )
+
+# # Callback to process the uploaded file
+# @app.callback(
+#     [Output("output-data-upload", "children"),
+#      Output("graph", "figure")],
+#     [Input("upload-data", "contents")]
+# )
+# def upload_file(contents):
+#     if contents is None:
+#         return "", {}
+
+#     # Decode the file content
+#     content_type, content_string = contents.split(',')
+#     decoded = base64.b64decode(content_string)
+
+#     # Read the file into pandas DataFrame
+#     try:
+#         # Using a `BytesIO` object to read the Excel file
+#         df = pd.read_excel(io.BytesIO(decoded))
+
+#         # Display the first few rows of the dataframe
+#         children = [
+#             html.H5(f"Data Preview:"),
+#             html.Table([
+#                 html.Tr([html.Th(col) for col in df.columns])  # Header row
+#             ] + [
+#                 html.Tr([html.Td(df.iloc[i][col]) for col in df.columns])
+#                 for i in range(min(5, len(df)))  # Show first 5 rows
+#             ])
+#         ]
+        
+#         # Create a simple plot (e.g., scatter plot)
+#         figure = {
+#             "data": [
+#                 {
+#                     "x": df.iloc[:, 0],  # First column for x-axis
+#                     "y": df.iloc[:, 1],  # Second column for y-axis
+#                     "type": "scatter",
+#                     "mode": "markers",
+#                     "name": "Data"
+#                 },
+#             ],
+#             "layout": {
+#                 "title": "Scatter Plot of Excel Data",
+#                 "xaxis": {"title": df.columns[0]},
+#                 "yaxis": {"title": df.columns[1]},
+#             },
+#         }
+        
+#         return children, figure
+
+#     except Exception as e:
+#         return f"Error: {e}", {}
+
 
 # if __name__ == "__main__":
 #     app.run_server(debug=True)
