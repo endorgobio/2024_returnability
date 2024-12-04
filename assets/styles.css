@@ -1,0 +1,14 @@
+"""
+.outer-container {
+    height: 100%; /* Ensures the outer container occupies full height of the parent */
+    display: flex; /* Enables flexbox layout for children */
+    justify-content: center; /* Optional: centers the content horizontally */
+    align-items: center; /* Optional: centers the content vertically */
+}
+
+.inner-container {
+    width: 100%; /* Full width of the parent container */
+    height: 100%; /* Full height of the parent container */
+    background-color: white; /* Optional: for visibility */
+}
+"""

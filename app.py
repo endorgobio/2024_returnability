@@ -50,6 +50,7 @@ external_stylesheets = [dbc.themes.BOOTSTRAP,
     #'https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet'
 ]
 
+# app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
 # Creates the app
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets,
                 title="retornabilidad",
@@ -179,11 +180,11 @@ tab1_content = dbc.Container([
             dbc.Col([
                 dbc.Row(html.H4("Ingresos y costos", className="text-center")),
                 dbc.Row(dcc.Graph(id="graph_utility"))],
-            width=6),            
+            width=5),,
             dbc.Col([
                 dbc.Row(html.H4("Utilización de la capacidad", className="text-center")),
                 dbc.Row(dcc.Graph(id="graph_utilization"))], 
-                width=6),
+                width=5),
         ],
         style={"display": "None"}  # Initially not visible
     )],
@@ -206,7 +207,8 @@ app.layout = dbc.Container([
         id="tabs",
         active_tab="dashboard",
         ),
-    dbc.Container(id="tab-content")],
+    dbc.Container(id="tab-content", fluid=True, className="inner-container d-flex justify-content-center align-items-center",),
+    ],
     fluid=True
     )
 
@@ -287,159 +289,3 @@ def run_model_graph(click_resolver,
     else:
         raise PreventUpdate
 
-# instance = create_instance(parameters)
-# model = create_model(instance)
-# model.setParam('MIPGap', 0.2) # Set the MIP gap tolerance to 5% (0.05)
-# model.optimize()
-# var_sol = get_vars_sol(model)
-# results_obj = get_obj_components(model)
-# df_obj = create_df_OF(results_obj)
-
-# import dash
-# from dash import dcc, html
-# import plotly.graph_objects as go
-
-# # Use of the classification inventory capacity
-# df_util = var_sol['ic'].groupby(['periodo']).agg(inv_class=("cantidad", "sum")).reset_index()
-# df_util['inv_class'] = np.round(100*df_util['inv_class'] / (var_sol['y']['apertura'].sum()*parameters['acv']), 1)
-# # Use of the washing inventory capacity
-# df_temp = var_sol['ip'].groupby(['periodo']).agg(inv_wash=("cantidad", "sum")).reset_index()
-# df_temp['inv_wash'] = np.round(100*df_temp['inv_wash'] / (var_sol['w']['apertura'].sum()*parameters['apl']), 1)
-# df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
-# # Use of the classification processing capacity
-# df_temp = var_sol['r'].groupby(['periodo']).agg(cap_class=("cantidad", "sum")).reset_index()
-# df_temp['cap_class'] = np.round(100*df_temp['cap_class'] / (var_sol['y']['apertura'].sum()*parameters['ccv']), 1)
-# df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
-# # Use of the classification processing capacity
-# df_temp = var_sol['u'].groupby(['periodo']).agg(cap_wash=("cantidad", "sum")).reset_index()
-# df_temp['cap_wash'] = np.round(100*df_temp['cap_wash'] / (var_sol['w']['apertura'].sum()*parameters['lpl']), 1)
-# df_util = pd.merge(df_util, df_temp, on="periodo", how="inner")
-# df_util["periodo"] = df_util["periodo"].astype(int)
-# df_util = df_util.sort_values(by="periodo", ascending=True).reset_index(drop=True)
-
-# df_util = create_df_util(var_sol, parameters)
-# fig = graph_util(df_util)
-    
-# import plotly.graph_objects as go
-
-# # Create the figure
-# fig = go.Figure()
-
-# # Add lines for each column
-# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["inv_class"], mode='lines', name='inv. clasificación'))
-# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["inv_wash"], mode='lines', name='inv. lavado'))
-# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["cap_class"], mode='lines', name='prod. clasificación'))
-# fig.add_trace(go.Scatter(x=df_util["periodo"], y=df_util["cap_wash"], mode='lines', name='prod. lavado'))
-
-# # Update layout
-# fig.update_layout(
-#     title=" ",
-#     xaxis_title="periodo",
-#     yaxis_title="% de uso",
-#     legend_title=" ",
-#     template="plotly_white",
-# )
-
-# # Show the figure
-# fig.show()
-
-
-# # Dash app
-# app = dash.Dash(__name__)
-
-# app.layout = html.Div([
-#     html.H1("Dash Plotly Dashboard"),
-#     dcc.Graph(figure=fig)  # Embed the figure in the dashboard
-# ])
-
-# if __name__ == '__main__':
-#     app.run_server(debug=True)
-
-# import dash
-# from dash import dcc, html
-# import dash_bootstrap_components as dbc
-# import pandas as pd
-# from dash.dependencies import Input, Output
-# import io
-# import base64
-
-# # Initialize the Dash app
-# app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
-
-# # Layout of the dashboard
-# app.layout = dbc.Container(
-#     [
-#         html.H1("Upload Excel File to Dash"),
-        
-#         # Upload component
-#         dcc.Upload(
-#             id="upload-data",
-#             children=html.Button("Upload Excel File"),
-#             accept=".xlsx",
-#         ),
-        
-#         # Displaying the uploaded data
-#         html.Div(id="output-data-upload"),
-
-#         # Plot the data (example)
-#         dcc.Graph(id="graph"),
-#     ],
-#     fluid=True,
-# )
-
-# # Callback to process the uploaded file
-# @app.callback(
-#     [Output("output-data-upload", "children"),
-#      Output("graph", "figure")],
-#     [Input("upload-data", "contents")]
-# )
-# def upload_file(contents):
-#     if contents is None:
-#         return "", {}
-
-#     # Decode the file content
-#     content_type, content_string = contents.split(',')
-#     decoded = base64.b64decode(content_string)
-
-#     # Read the file into pandas DataFrame
-#     try:
-#         # Using a `BytesIO` object to read the Excel file
-#         df = pd.read_excel(io.BytesIO(decoded))
-
-#         # Display the first few rows of the dataframe
-#         children = [
-#             html.H5(f"Data Preview:"),
-#             html.Table([
-#                 html.Tr([html.Th(col) for col in df.columns])  # Header row
-#             ] + [
-#                 html.Tr([html.Td(df.iloc[i][col]) for col in df.columns])
-#                 for i in range(min(5, len(df)))  # Show first 5 rows
-#             ])
-#         ]
-        
-#         # Create a simple plot (e.g., scatter plot)
-#         figure = {
-#             "data": [
-#                 {
-#                     "x": df.iloc[:, 0],  # First column for x-axis
-#                     "y": df.iloc[:, 1],  # Second column for y-axis
-#                     "type": "scatter",
-#                     "mode": "markers",
-#                     "name": "Data"
-#                 },
-#             ],
-#             "layout": {
-#                 "title": "Scatter Plot of Excel Data",
-#                 "xaxis": {"title": df.columns[0]},
-#                 "yaxis": {"title": df.columns[1]},
-#             },
-#         }
-        
-#         return children, figure
-
-#     except Exception as e:
-#         return f"Error: {e}", {}
-
-
-# if __name__ == "__main__":
-#     app.run_server(debug=True)
